@@ -1,7 +1,7 @@
 # RepliShot
 Replishot is a custom application to capture data from an OptiShot 2 golf simulator and convert it into mouse commands for use in TGC2019.
 
-This software allows an Optishot to be used with the standard version of TGC2019 through mouse emulation.  Shot data is captured from the Optishot and then converted to mouse movements to replicate the measured shot in TGC2019.  It is recommended to run TGC2019 in full screen and to keep Replishot in a lower corner of the screen.  Replishot has been tested with TGC2019 running at 1920x1080.
+This software allows an Optishot to be used with the standard version of [TGC2019](https://store.steampowered.com/app/695290/The_Golf_Club_2019_featuring_PGA_TOUR/) through mouse emulation.  Shot data is captured from the Optishot and then converted to mouse movements to replicate the measured shot in TGC2019.  It is recommended to run TGC2019 in full screen and to keep Replishot in a lower corner of the screen.  Replishot has been tested with TGC2019 running at 1920x1080.
 
 A screenshot of Replishot can be seen here:
 
