@@ -384,6 +384,7 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                         int front_count = 0;
                         double back_average = 0.0;
                         int back_count = 0;
+                        int ball_skip = 0;
 
                         for (int i = 0; i < data_size; i += 5) {
                             if (data[i + 2] == 0x81) {
@@ -457,7 +458,8 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                                     if (!no_ball) {
                                         if (potential_ball_read) {
                                             if (((data[i + 3] * 256) + data[i + 4]) < 0x20) {
-                                                swing_speed = (double(SENSORSPACING) / (double(elapsed_time - ((data[i + 3] * 256) + data[i + 4])) * 18)) * 2236.94;
+                                                swing_speed = (double(SENSORSPACING) / (double(elapsed_time - ((data[i - 2] * 256) + data[i - 1])) * 18)) * 2236.94;
+                                                ball_skip = i - 5;
                                                 printf("Ball detected, swing speed updated!\n");
                                             }
                                             else {
@@ -509,52 +511,54 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                                 prev_max = j;
                             }
                             else {
-                                if (data[i] != 0 && !front) {
-                                    int temp_data = 0;
-                                    if (data[i] == 0) temp_data = data[i + 1];
-                                    else temp_data = data[i];
-                                    int j = 0;
-                                    while (((temp_data >> j) & 0x1) == 0) j++;
-                                    prev_min = j;
-                                    j = 7;
-                                    while (((temp_data >> j) & 0x1) == 0) j--;
-                                    prev_max = j;
-                                    front = TRUE;
-                                }
-                                else {
-                                    if (data[i] != 00 || data[i + 1] != 00) {
+                                if (i >= ball_skip) {
+                                    if (data[i] != 0 && !front) {
                                         int temp_data = 0;
                                         if (data[i] == 0) temp_data = data[i + 1];
                                         else temp_data = data[i];
                                         int j = 0;
                                         while (((temp_data >> j) & 0x1) == 0) j++;
-                                        min = j;
+                                        prev_min = j;
                                         j = 7;
                                         while (((temp_data >> j) & 0x1) == 0) j--;
-                                        max = j;
-                                        double x_travel = speed_per_tick * ((data[i + 3] * 256) + data[i + 4]);
-                                        int y_travel_min = (prev_min - min) * LEDSPACING;
-                                        if (y_travel_min == 0) y_travel_min = 1000000;
-                                        int y_travel_max = (prev_max - max) * LEDSPACING;
-                                        if (y_travel_max == 0) y_travel_max = 1000000;
-                                        //printf("x: %f, Ymin: %d, Ymax: %d\n", x_travel, y_travel_min, y_travel_max);
-                                        min_angle = atan(x_travel / y_travel_min) * 180 / PI;
-                                        max_angle = atan(x_travel / y_travel_max) * 180 / PI;
+                                        prev_max = j;
+                                        front = TRUE;
+                                    }
+                                    else {
+                                        if (data[i] != 00 || data[i + 1] != 00) {
+                                            int temp_data = 0;
+                                            if (data[i] == 0) temp_data = data[i + 1];
+                                            else temp_data = data[i];
+                                            int j = 0;
+                                            while (((temp_data >> j) & 0x1) == 0) j++;
+                                            min = j;
+                                            j = 7;
+                                            while (((temp_data >> j) & 0x1) == 0) j--;
+                                            max = j;
+                                            double x_travel = speed_per_tick * ((data[i + 3] * 256) + data[i + 4]);
+                                            int y_travel_min = (prev_min - min) * LEDSPACING;
+                                            if (y_travel_min == 0) y_travel_min = 1000000;
+                                            int y_travel_max = (prev_max - max) * LEDSPACING;
+                                            if (y_travel_max == 0) y_travel_max = 1000000;
+                                            //printf("x: %f, Ymin: %d, Ymax: %d\n", x_travel, y_travel_min, y_travel_max);
+                                            min_angle = atan(x_travel / y_travel_min) * 180 / PI;
+                                            max_angle = atan(x_travel / y_travel_max) * 180 / PI;
 
-                                        if (front) {
-                                            //printf("Min: %f, Max %f\n", min_angle, max_angle);
-                                            if (abs(min_angle) > abs(max_angle)) front_angle_accumulate += min_angle;
-                                            else front_angle_accumulate += max_angle;
-                                            front_angle_count++;
+                                            if (front) {
+                                                //printf("Min: %f, Max %f\n", min_angle, max_angle);
+                                                if (abs(min_angle) > abs(max_angle)) front_angle_accumulate += min_angle;
+                                                else front_angle_accumulate += max_angle;
+                                                front_angle_count++;
+                                            }
+                                            else {
+                                                //printf("Min: %f, Max %f\n", min_angle, max_angle);
+                                                if (abs(min_angle) > abs(max_angle)) back_angle_accumulate += min_angle;
+                                                else back_angle_accumulate += max_angle;
+                                                back_angle_count++;
+                                            }
+                                            prev_min = min;
+                                            prev_max = max;
                                         }
-                                        else {
-                                            //printf("Min: %f, Max %f\n", min_angle, max_angle);
-                                            if (abs(min_angle) > abs(max_angle)) back_angle_accumulate += min_angle;
-                                            else back_angle_accumulate += max_angle;
-                                            back_angle_count++;
-                                        }
-                                        prev_min = min;
-                                        prev_max = max;
                                     }
                                 }
                             }
