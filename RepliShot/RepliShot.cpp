@@ -30,7 +30,7 @@
 #define WINDOW_X_SIZE 340
 
 #ifdef _DEBUG
-#define WINDOW_Y_SIZE 500
+#define WINDOW_Y_SIZE 530
 #else
 #define WINDOW_Y_SIZE 325
 #endif
@@ -65,6 +65,9 @@ HWND forwardswingstepsValue = NULL;
 HWND slopeValue = NULL;
 HWND sideaccelValue = NULL;
 HWND sidescaleValue = NULL;
+HWND collectshotValue = NULL;
+HWND replayData = NULL;
+HWND replayButton = NULL;
 #endif
 
 HBITMAP golfball_bmap = NULL;
@@ -77,13 +80,13 @@ int desktop_height = 0;
 
 int selected_club = 0;
 
-int backswingstepsize = 20;
-int backswingsteps = 15;
+double backswingstepsize = 7;
+double backswingsteps = 45;
 int midswingdelay = 625;
-int forwardswingstepsize = 75;
-int forwardswingsteps = 10;
+double forwardswingstepsize = 25;
+double forwardswingsteps = 30;
 double slope = 0.0;
-double sideaccel = 1.008;
+double sideaccel = 1.05;
 double sidescale = 0.0;
 bool clickMouse = FALSE;
 bool usingball = TRUE;
@@ -91,6 +94,9 @@ bool usingball = TRUE;
 double swing_angle = 0.0;
 int swing_path = 0;
 int face_contact = 0;
+
+FILE* fp;
+bool logging = FALSE; //write raw shot data to data_log.txt
 
 ////////////////// USB CODE /////////////////////////////
 
@@ -105,6 +111,14 @@ static bool on_top = FALSE;
 static bool opti_connected = FALSE;
 
 enum golf_club {Driver, W3, W5, HY, I3, I4, I5, I6, I7, I8, I9, PW, GW, SW, Putter};
+
+struct club {
+    double club_mass;
+    double club_loft;
+    double launch_angle;
+    double club_speed;
+    double smash_factor;
+};
 
 // Future versions of libusb will use usb_interface instead of interface
 // in libusb_config_descriptor => catter for that
@@ -254,6 +268,410 @@ static int flush_buffer(hid_device* dev, unsigned char* data, unsigned char* pre
 
 ///////////////// END USB CODE //////////////////////////
 
+club getClubData(int club_num) {
+    club current_club;
+
+    switch (club_num) {
+    case Driver:
+        current_club.club_mass = 180;
+        current_club.club_loft = 10;
+        current_club.launch_angle = 10.9;
+        current_club.club_speed = 113;
+        current_club.smash_factor = 1.48;
+        break;
+    case W3:
+        current_club.club_mass = 190;
+        current_club.club_loft = 16.5;
+        current_club.launch_angle = 9.2;
+        current_club.club_speed = 107;
+        current_club.smash_factor = 1.48;
+        break;
+    case W5:
+        current_club.club_mass = 200;
+        current_club.club_loft = 21;
+        current_club.launch_angle = 9.4;
+        current_club.club_speed = 103;
+        current_club.smash_factor = 1.47;
+        break;
+    case HY:
+        current_club.club_mass = 195;
+        current_club.club_loft = 19;
+        current_club.launch_angle = 10.2;
+        current_club.club_speed = 100;
+        current_club.smash_factor = 1.46;
+        break;
+    case I3:
+        current_club.club_mass = 230;
+        current_club.club_loft = 19;
+        current_club.launch_angle = 10.4;
+        current_club.club_speed = 98;
+        current_club.smash_factor = 1.45;
+        break;
+    case I4:
+        current_club.club_mass = 237;
+        current_club.club_loft = 21;
+        current_club.launch_angle = 11.0;
+        current_club.club_speed = 96;
+        current_club.smash_factor = 1.43;
+        break;
+    case I5:
+        current_club.club_mass = 244;
+        current_club.club_loft = 23.5;
+        current_club.launch_angle = 12.1;
+        current_club.club_speed = 94;
+        current_club.smash_factor = 1.41;
+        break;
+    case I6:
+        current_club.club_mass = 251;
+        current_club.club_loft = 26.5;
+        current_club.launch_angle = 14.1;
+        current_club.club_speed = 92;
+        current_club.smash_factor = 1.38;
+        break;
+    case I7:
+        current_club.club_mass = 258;
+        current_club.club_loft = 30.5;
+        current_club.launch_angle = 16.3;
+        current_club.club_speed = 90;
+        current_club.smash_factor = 1.33;
+        break;
+    case I8:
+        current_club.club_mass = 265;
+        current_club.club_loft = 34.5;
+        current_club.launch_angle = 18.1;
+        current_club.club_speed = 87;
+        current_club.smash_factor = 1.32;
+        break;
+    case I9:
+        current_club.club_mass = 270;
+        current_club.club_loft = 38.5;
+        current_club.launch_angle = 20.4;
+        current_club.club_speed = 85;
+        current_club.smash_factor = 1.28;
+        break;
+    case PW:
+        current_club.club_mass = 300;
+        current_club.club_loft = 43;
+        current_club.launch_angle = 24.2;
+        current_club.club_speed = 83;
+        current_club.smash_factor = 1.23;
+        break;
+    case GW:
+        current_club.club_mass = 300;
+        current_club.club_loft = 48;
+        current_club.launch_angle = 26;
+        current_club.club_speed = 81;
+        current_club.smash_factor = 1.21;
+        break;
+    case SW:
+        current_club.club_mass = 300;
+        current_club.club_loft = 54;
+        current_club.launch_angle = 30;
+        current_club.club_speed = 79;
+        current_club.smash_factor = 1.19;
+        break;
+    case Putter:
+        current_club.club_mass = 140;
+        current_club.club_loft = 0;
+        current_club.launch_angle = 0;
+        current_club.club_speed = 10;
+        current_club.smash_factor = 1.0;
+        break;
+    default:
+        current_club.club_mass = 140;
+        current_club.club_loft = 10;
+        current_club.launch_angle = 10.9;
+        current_club.club_speed = 114;
+        current_club.smash_factor = 1.48;
+        break;
+    }
+
+    return current_club;
+}
+
+void processShotData(uint8_t* data, int data_size) {
+
+    // FIGURE OUT DATA PROCESSING
+    bool first_front = TRUE;
+    int elapsed_time = 0;
+    bool potential_ball_read = FALSE;
+    bool no_ball = FALSE;
+    double swing_speed = 0.0;
+    int min_front = 7;
+    int max_front = 0;
+    int min_back = 7;
+    int max_back = 0;
+    double front_average = 0.0;
+    int front_count = 0;
+    double back_average = 0.0;
+    int back_count = 0;
+    int ball_skip = 0;
+
+    for (int i = 0; i < data_size; i += 5) {
+        if (data[i + 2] == 0x81) {
+            printf("Origin:     Sensor(s) ");
+            if (data[i] != 0) {
+                for (int j = 0; j < 8; j++) {
+                    if (((data[i] >> j) & 0x01) != 0) {
+                        if (j < min_front) min_front = j;
+                        if (j > max_front) max_front = j;
+                        front_average += j;
+                        front_count++;
+                    }
+                    if (((data[i] >> j) & 0x01) != 0) printf("F%d, ", j);
+                    else printf("    ");
+                }
+            }
+            else {
+                for (int j = 0; j < 8; j++) {
+                    if (((data[i + 1] >> j) & 0x01) != 0) {
+                        if (j < min_back) min_back = j;
+                        if (j > max_back) max_back = j;
+                        back_average += j;
+                        back_count++;
+                    }
+                    if (((data[i + 1] >> j) & 0x01) != 0) printf("B%d, ", j);
+                    else printf("    ");
+                }
+            }
+            printf("\n");
+        }
+        if (data[i + 2] == 0x52) {
+            elapsed_time += ((data[i + 3] * 256) + data[i + 4]);
+            printf("Additional: Sensor(s) ");
+            for (int j = 0; j < 8; j++) {
+                if (((data[i] >> j) & 0x01) != 0) printf("ERROR IN UNDERSTANDING ");
+            }
+            for (int j = 0; j < 8; j++) {
+                if (((data[i + 1] >> j) & 0x01) != 0) {
+                    if (j < min_back) min_back = j;
+                    if (j > max_back) max_back = j;
+                    back_average += j;
+                    back_count++;
+                }
+                if (((data[i + 1] >> j) & 0x01) != 0) printf("B%d, ", j);
+                else printf("    ");
+            }
+            printf("\n");
+        }
+        if (data[i + 2] == 0x4A) {
+            elapsed_time += ((data[i + 3] * 256) + data[i + 4]);
+            printf("Additional: Sensor(s) ");
+            for (int j = 0; j < 8; j++) {
+                if (((data[i] >> j) & 0x01) != 0) {
+                    if (j < min_front) min_front = j;
+                    if (j > max_front) max_front = j;
+                    front_average += j;
+                    front_count++;
+                }
+                if (((data[i] >> j) & 0x01) != 0) printf("F%d, ", j);
+                else printf("    ");
+            }
+            for (int j = 0; j < 8; j++) {
+                if (((data[i + 1] >> j) & 0x01) != 0) printf("ERROR IN UNDERSTANDING ");
+            }
+            if (first_front) {
+                first_front = FALSE;
+                //printf("Elapsed: %d, Gap: %d\n", elapsed_time, ((data[i + 3] * 256) + data[i + 4]));
+                swing_speed = (double(SENSORSPACING) / double(elapsed_time * 18)) * 2236.94;
+            }
+            else if (usingball) {
+                if (!no_ball) {
+                    if (potential_ball_read) {
+                        if (((data[i + 3] * 256) + data[i + 4]) < 0x20) {
+                            swing_speed = (double(SENSORSPACING) / (double(elapsed_time - ((data[i - 2] * 256) + data[i - 1])) * 18)) * 2236.94;
+                            ball_skip = i - 5;
+                            printf("Ball detected, swing speed updated!\n");
+                        }
+                        else {
+                            no_ball = TRUE;
+                        }
+                    }
+                    if (((data[i + 3] * 256) + data[i + 4]) > 0x25) {
+                        potential_ball_read = TRUE;
+                        printf("Maybe a ball?\n");
+                    }
+                }
+            }
+            printf("\n");
+        }
+    }
+
+    //data hex printout
+    for (int i = 0; i < data_size; i++) {
+        if (i % 20 == 0 && i != 0) printf("\n");
+        else if (i % 5 == 0 && i != 0) printf("  ");
+        printf("%02hhx ", data[i]);
+        if (logging) fprintf(fp, "%d,", data[i]);
+    }
+    printf("\n\n");
+    if (logging) fprintf(fp, "\n");
+
+
+    std::wstringstream clubspeed;
+    //Swing Speed MPH
+    if (!first_front) clubspeed << std::fixed << std::setw(3) << std::setprecision(1) << swing_speed << " MPH\n";
+    SetWindowText(clubSpeedValue, clubspeed.str().c_str());
+
+    //Club Open/Closed
+    int prev_min, prev_max, min, max;
+    double min_angle, max_angle;
+    double back_angle_accumulate = 0.0;
+    int back_angle_count = 0;
+    double front_angle_accumulate = 0.0;
+    int front_angle_count = 0;
+    bool front = FALSE;
+    double speed_per_tick = double(SENSORSPACING) / double(elapsed_time);
+    for (int i = 0; i < data_size; i += 5) {
+        if (i == 0) {
+            int temp_data = 0;
+            if (data[i] == 0) temp_data = data[i + 1];
+            else temp_data = data[i];
+            int j = 0;
+            while (((temp_data >> j) & 0x1) == 0) j++;
+            prev_min = j;
+            j = 7;
+            while (((temp_data >> j) & 0x1) == 0) j--;
+            prev_max = j;
+        }
+        else {
+            if (i >= ball_skip) {
+                if (data[i] != 0 && !front) {
+                    int temp_data = 0;
+                    if (data[i] == 0) temp_data = data[i + 1];
+                    else temp_data = data[i];
+                    int j = 0;
+                    while (((temp_data >> j) & 0x1) == 0) j++;
+                    prev_min = j;
+                    j = 7;
+                    while (((temp_data >> j) & 0x1) == 0) j--;
+                    prev_max = j;
+                    front = TRUE;
+                }
+                else {
+                    if (data[i] != 00 || data[i + 1] != 00) {
+                        int temp_data = 0;
+                        if (data[i] == 0) temp_data = data[i + 1];
+                        else temp_data = data[i];
+                        int j = 0;
+                        while (((temp_data >> j) & 0x1) == 0) j++;
+                        min = j;
+                        j = 7;
+                        while (((temp_data >> j) & 0x1) == 0) j--;
+                        max = j;
+                        double x_travel = speed_per_tick * ((data[i + 3] * 256) + data[i + 4]);
+                        int y_travel_min = (prev_min - min) * LEDSPACING;
+                        if (y_travel_min == 0) y_travel_min = 1000000;
+                        int y_travel_max = (prev_max - max) * LEDSPACING;
+                        if (y_travel_max == 0) y_travel_max = 1000000;
+                        //printf("x: %f, Ymin: %d, Ymax: %d\n", x_travel, y_travel_min, y_travel_max);
+                        min_angle = atan(x_travel / y_travel_min) * 180 / PI;
+                        max_angle = atan(x_travel / y_travel_max) * 180 / PI;
+
+                        if (front) {
+                            //printf("Min: %f, Max %f\n", min_angle, max_angle);
+                            if (abs(min_angle) > abs(max_angle)) front_angle_accumulate += min_angle;
+                            else front_angle_accumulate += max_angle;
+                            front_angle_count++;
+                        }
+                        else {
+                            //printf("Min: %f, Max %f\n", min_angle, max_angle);
+                            if (abs(min_angle) > abs(max_angle)) back_angle_accumulate += min_angle;
+                            else back_angle_accumulate += max_angle;
+                            back_angle_count++;
+                        }
+                        prev_min = min;
+                        prev_max = max;
+                    }
+                }
+            }
+        }
+    }
+    //printf("%f, %f, %d, %d\n", front_angle_accumulate, back_angle_accumulate, front_angle_count, back_angle_count);
+    double average = ((front_angle_accumulate / front_angle_count) + (back_angle_accumulate / back_angle_count) * 2) / 3; //weighted as the ball is closer to the back sensor
+    if (isnan(average)) average = 0.0;
+    //printf("Front: %f, Back %f\n", front_angle_accumulate / front_angle_count, back_angle_accumulate / back_angle_count);
+    //wss << "Face Angle: ";
+    std::wstringstream faceangle;
+    faceangle << std::fixed << std::setw(3) << std::setprecision(1);
+    if (average > 0) faceangle << "Closed " << average << "\n";
+    else if (average < 0) faceangle << "Open " << abs(average) << "\n";
+    else faceangle << "Square " << abs(average) << "\n";
+    SetWindowText(faceAngleValue, faceangle.str().c_str());
+    swing_angle = average;
+
+    //Club Path
+    int max_path = max_front - max_back;
+    int min_path = min_front - min_back;
+    int path = max_path + min_path;
+    //wss << "max: " << max_path << " min: " << min_path << " path: " << path << "\n";
+    //printf("%d ", path);
+    //wss << "Path: ";
+    std::wstringstream clubpath;
+    if (abs(path) > 3) {
+        if (path > 0) clubpath << "Very Inside/Out\n";
+        else clubpath << "Very Outside/In\n";
+    }
+    else if (abs(path) > 1) {
+        if (path > 0) clubpath << "Inside/Out\n";
+        else clubpath << "Outside/In\n";
+    }
+    else clubpath << "On Plane\n";
+    SetWindowText(pathValue, clubpath.str().c_str());
+    swing_path = path;
+
+    //Club Face Hit Location
+    //wss << "Face Contact: ";
+    std::wstringstream facecontact;
+    //Only using back, matches OS software better, and makes more sense as the front is way after the ball
+    int max_trigger = max_back; // max(max_front, max_back);
+    int min_trigger = min_back; // max(min_front, min_back);
+    if (max_trigger == 0) { facecontact << "Missed\n"; face_contact = 3; }
+    else if (max_trigger == 1) { facecontact << "Extreme Toe\n";  face_contact = 2; }
+    else if (max_trigger == 2) { facecontact << "Extreme Toe\n";  face_contact = 2; }
+    else if (max_trigger == 3) { facecontact << "Toe\n";          face_contact = 1; }
+    else if (min_trigger == 7) { facecontact << "Far Heel\n";     face_contact = -2; }
+    else if (min_trigger == 6) { facecontact << "Far Heel\n";     face_contact = -2; }
+    else if (min_trigger == 5) { facecontact << "Far Heel\n";     face_contact = -2; }
+    else if (min_trigger == 4) { facecontact << "Heel\n";         face_contact = -1; }
+    else { facecontact << "Center\n"; face_contact = 0; }
+    SetWindowText(faceContactValue, facecontact.str().c_str());
+
+    //wss << selected_club << "\n";
+    club current_club = getClubData(selected_club);
+
+    if (max_trigger == 0) current_club.smash_factor = 0.5;
+    else if (max_trigger == 1) current_club.smash_factor = 0.94;
+    else if (max_trigger == 2) current_club.smash_factor = 0.94;
+    else if (max_trigger == 3) current_club.smash_factor = 0.98;
+    else if (min_trigger == 7) current_club.smash_factor = 0.94;
+    else if (min_trigger == 6) current_club.smash_factor = 0.94;
+    else if (min_trigger == 5) current_club.smash_factor = 0.94;
+    else if (min_trigger == 4) current_club.smash_factor = 0.98;
+
+    //Generate Parameters for shot
+    if (selected_club == Putter) {
+        backswingstepsize = 7;
+        forwardswingstepsize = 25;
+        if (swing_speed > 5.5) midswingdelay = 100 + int(1500 * (swing_speed / current_club.club_speed));
+        else midswingdelay = 100 + int(1000 * (swing_speed / current_club.club_speed));
+    }
+    else {
+        backswingstepsize = 7.0 * current_club.smash_factor;
+        forwardswingstepsize = 25.0 * current_club.smash_factor;
+
+        midswingdelay = 200 + int(425.0 * (swing_speed / current_club.club_speed));
+    }
+    slope = double(path) / 6;
+
+    double off_angle = (atan(path * -.08333333) * 180 / PI) - average;
+
+    sidescale = off_angle / 10;
+    sideaccel = 1.05;
+
+    RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+}
+
 void preciseSleep(double seconds) {
     using namespace std;
     using namespace std::chrono;
@@ -285,10 +703,10 @@ void preciseSleep(double seconds) {
 }
 
 void takeShot() {
-    int cursorX = desktop_width/2;
-    int cursorY = desktop_height/2;
-    int backswingspeed = 17;
-    int forwardswingspeed = 15; //lower is faster
+    double cursorX = desktop_width/2;
+    double cursorY = desktop_height/2;
+    int backswingspeed = 6;
+    int forwardswingspeed = 5; //lower is faster
     double local_sideaccel = sideaccel;
 
     SetCursorPos(cursorX, cursorY);
@@ -306,8 +724,8 @@ void takeShot() {
     preciseSleep(double(midswingdelay)/1000.0); //convert ms to s
     for (int i = 0; i < forwardswingsteps; i++) {
         cursorY -= forwardswingstepsize;
-        cursorX += slope* forwardswingstepsize;
-        local_sideaccel = local_sideaccel * local_sideaccel;
+        cursorX += slope* double(forwardswingstepsize);
+        local_sideaccel = pow(local_sideaccel, 1.2);
         if (local_sideaccel > desktop_width) local_sideaccel = desktop_width;
         cursorX += int(local_sideaccel * sidescale);
         if (cursorX < 0) cursorX = 0;
@@ -370,416 +788,8 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
 
                         opti_red(handle, endpoint, report_buffer, size);
 
-                        // FIGURE OUT DATA PROCESSING
-                        bool first_front = TRUE;
-                        int elapsed_time = 0;
-                        bool potential_ball_read = FALSE;
-                        bool no_ball = FALSE;
-                        double swing_speed = 0.0;
-                        int min_front = 7;
-                        int max_front = 0;
-                        int min_back = 7;
-                        int max_back = 0;
-                        double front_average = 0.0;
-                        int front_count = 0;
-                        double back_average = 0.0;
-                        int back_count = 0;
-                        int ball_skip = 0;
+                        processShotData(data, data_size);
 
-                        for (int i = 0; i < data_size; i += 5) {
-                            if (data[i + 2] == 0x81) {
-                                printf("Origin:     Sensor(s) ");
-                                if (data[i] != 0) {
-                                    for (int j = 0; j < 8; j++) {
-                                        if (((data[i] >> j) & 0x01) != 0) {
-                                            if (j < min_front) min_front = j;
-                                            if (j > max_front) max_front = j;
-                                            front_average += j;
-                                            front_count++;
-                                        }
-                                        if (((data[i] >> j) & 0x01) != 0) printf("F%d, ", j);
-                                        else printf("    ");
-                                    }
-                                }
-                                else {
-                                    for (int j = 0; j < 8; j++) {
-                                        if (((data[i + 1] >> j) & 0x01) != 0) {
-                                            if (j < min_back) min_back = j;
-                                            if (j > max_back) max_back = j;
-                                            back_average += j;
-                                            back_count++;
-                                        }
-                                        if (((data[i + 1] >> j) & 0x01) != 0) printf("B%d, ", j);
-                                        else printf("    ");
-                                    }
-                                }
-                                printf("\n");
-                            }
-                            if (data[i + 2] == 0x52) {
-                                elapsed_time += ((data[i + 3] * 256) + data[i + 4]);
-                                printf("Additional: Sensor(s) ");
-                                for (int j = 0; j < 8; j++) {
-                                    if (((data[i] >> j) & 0x01) != 0) printf("ERROR IN UNDERSTANDING ");
-                                }
-                                for (int j = 0; j < 8; j++) {
-                                    if (((data[i + 1] >> j) & 0x01) != 0) {
-                                        if (j < min_back) min_back = j;
-                                        if (j > max_back) max_back = j;
-                                        back_average += j;
-                                        back_count++;
-                                    }
-                                    if (((data[i + 1] >> j) & 0x01) != 0) printf("B%d, ", j);
-                                    else printf("    ");
-                                }
-                                printf("\n");
-                            }
-                            if (data[i + 2] == 0x4A) {
-                                elapsed_time += ((data[i + 3] * 256) + data[i + 4]);
-                                printf("Additional: Sensor(s) ");
-                                for (int j = 0; j < 8; j++) {
-                                    if (((data[i] >> j) & 0x01) != 0) {
-                                        if (j < min_front) min_front = j;
-                                        if (j > max_front) max_front = j;
-                                        front_average += j;
-                                        front_count++;
-                                    }
-                                    if (((data[i] >> j) & 0x01) != 0) printf("F%d, ", j);
-                                    else printf("    ");
-                                }
-                                for (int j = 0; j < 8; j++) {
-                                    if (((data[i + 1] >> j) & 0x01) != 0) printf("ERROR IN UNDERSTANDING ");
-                                }
-                                if (first_front) {
-                                    first_front = FALSE;
-                                    //printf("Elapsed: %d, Gap: %d\n", elapsed_time, ((data[i + 3] * 256) + data[i + 4]));
-                                    swing_speed = (double(SENSORSPACING) / double(elapsed_time * 18)) * 2236.94;
-                                }
-                                else if (usingball) {
-                                    if (!no_ball) {
-                                        if (potential_ball_read) {
-                                            if (((data[i + 3] * 256) + data[i + 4]) < 0x20) {
-                                                swing_speed = (double(SENSORSPACING) / (double(elapsed_time - ((data[i - 2] * 256) + data[i - 1])) * 18)) * 2236.94;
-                                                ball_skip = i - 5;
-                                                printf("Ball detected, swing speed updated!\n");
-                                            }
-                                            else {
-                                                no_ball = TRUE;
-                                            }
-                                        }
-                                        if (((data[i + 3] * 256) + data[i + 4]) > 0x25) {
-                                            potential_ball_read = TRUE;
-                                            printf("Maybe a ball?\n");
-                                        }
-                                    }
-                                }
-                                printf("\n");
-                            }
-                        }
-
-                        //data hex printout
-                        for (int i = 0; i < data_size; i++) {
-                            if (i % 20 == 0 && i != 0) printf("\n");
-                            else if (i % 5 == 0 && i != 0) printf("  ");
-                            printf("%02hhx ", data[i]);
-                        }
-                        printf("\n\n");
-
-                        std::wstringstream clubspeed;
-                        //Swing Speed MPH
-                        if (!first_front) clubspeed << std::fixed << std::setw(3) << std::setprecision(1) << swing_speed << " MPH\n";
-                        SetWindowText(clubSpeedValue, clubspeed.str().c_str());
-
-                        //Club Open/Closed
-                        int prev_min, prev_max, min, max;
-                        double min_angle, max_angle;
-                        double back_angle_accumulate = 0.0;
-                        int back_angle_count = 0;
-                        double front_angle_accumulate = 0.0;
-                        int front_angle_count = 0;
-                        bool front = FALSE;
-                        double speed_per_tick = double(SENSORSPACING) / double(elapsed_time);
-                        for (int i = 0; i < data_size; i += 5) {
-                            if (i == 0) {
-                                int temp_data = 0;
-                                if (data[i] == 0) temp_data = data[i + 1];
-                                else temp_data = data[i];
-                                int j = 0;
-                                while (((temp_data >> j) & 0x1) == 0) j++;
-                                prev_min = j;
-                                j = 7;
-                                while (((temp_data >> j) & 0x1) == 0) j--;
-                                prev_max = j;
-                            }
-                            else {
-                                if (i >= ball_skip) {
-                                    if (data[i] != 0 && !front) {
-                                        int temp_data = 0;
-                                        if (data[i] == 0) temp_data = data[i + 1];
-                                        else temp_data = data[i];
-                                        int j = 0;
-                                        while (((temp_data >> j) & 0x1) == 0) j++;
-                                        prev_min = j;
-                                        j = 7;
-                                        while (((temp_data >> j) & 0x1) == 0) j--;
-                                        prev_max = j;
-                                        front = TRUE;
-                                    }
-                                    else {
-                                        if (data[i] != 00 || data[i + 1] != 00) {
-                                            int temp_data = 0;
-                                            if (data[i] == 0) temp_data = data[i + 1];
-                                            else temp_data = data[i];
-                                            int j = 0;
-                                            while (((temp_data >> j) & 0x1) == 0) j++;
-                                            min = j;
-                                            j = 7;
-                                            while (((temp_data >> j) & 0x1) == 0) j--;
-                                            max = j;
-                                            double x_travel = speed_per_tick * ((data[i + 3] * 256) + data[i + 4]);
-                                            int y_travel_min = (prev_min - min) * LEDSPACING;
-                                            if (y_travel_min == 0) y_travel_min = 1000000;
-                                            int y_travel_max = (prev_max - max) * LEDSPACING;
-                                            if (y_travel_max == 0) y_travel_max = 1000000;
-                                            //printf("x: %f, Ymin: %d, Ymax: %d\n", x_travel, y_travel_min, y_travel_max);
-                                            min_angle = atan(x_travel / y_travel_min) * 180 / PI;
-                                            max_angle = atan(x_travel / y_travel_max) * 180 / PI;
-
-                                            if (front) {
-                                                //printf("Min: %f, Max %f\n", min_angle, max_angle);
-                                                if (abs(min_angle) > abs(max_angle)) front_angle_accumulate += min_angle;
-                                                else front_angle_accumulate += max_angle;
-                                                front_angle_count++;
-                                            }
-                                            else {
-                                                //printf("Min: %f, Max %f\n", min_angle, max_angle);
-                                                if (abs(min_angle) > abs(max_angle)) back_angle_accumulate += min_angle;
-                                                else back_angle_accumulate += max_angle;
-                                                back_angle_count++;
-                                            }
-                                            prev_min = min;
-                                            prev_max = max;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        //printf("%f, %f, %d, %d\n", front_angle_accumulate, back_angle_accumulate, front_angle_count, back_angle_count);
-                        double average = ((front_angle_accumulate / front_angle_count) + (back_angle_accumulate / back_angle_count) * 2) / 3; //weighted as the ball is closer to the back sensor
-                        if (isnan(average)) average = 0.0;
-                        //printf("Front: %f, Back %f\n", front_angle_accumulate / front_angle_count, back_angle_accumulate / back_angle_count);
-                        //wss << "Face Angle: ";
-                        std::wstringstream faceangle;
-                        faceangle << std::fixed << std::setw(3) << std::setprecision(1);
-                        if (average > 0) faceangle << "Closed " << average << "\n";
-                        else if (average < 0) faceangle << "Open " << abs(average) << "\n";
-                        else faceangle << "Square " << abs(average) << "\n";
-                        SetWindowText(faceAngleValue, faceangle.str().c_str());
-                        swing_angle = average;
-
-                        //Club Path
-                        int max_path = max_front - max_back;
-                        int min_path = min_front - min_back;
-                        int path = max_path + min_path;
-                        //wss << "max: " << max_path << " min: " << min_path << " path: " << path << "\n";
-                        //printf("%d ", path);
-                        //wss << "Path: ";
-                        std::wstringstream clubpath;
-                        if (abs(path) > 3) {
-                            if (path > 0) clubpath << "Very Inside/Out\n";
-                            else clubpath << "Very Outside/In\n";
-                        }
-                        else if (abs(path) > 1) {
-                            if (path > 0) clubpath << "Inside/Out\n";
-                            else clubpath << "Outside/In\n";
-                        }
-                        else clubpath << "On Plane\n";
-                        SetWindowText(pathValue, clubpath.str().c_str());
-                        swing_path = path;
-
-                        //Club Face Hit Location
-                        //wss << "Face Contact: ";
-                        std::wstringstream facecontact;
-                        //Only using back, matches OS software better, and makes more sense as the front is way after the ball
-                        int max_trigger = max_back; // max(max_front, max_back);
-                        int min_trigger = min_back; // max(min_front, min_back);
-                        if (max_trigger == 0) {facecontact << "Missed\n"; face_contact = 3;}
-                        else if (max_trigger == 1) {facecontact << "Extreme Toe\n";  face_contact = 2;}
-                        else if (max_trigger == 2) {facecontact << "Extreme Toe\n";  face_contact = 2;}
-                        else if (max_trigger == 3) {facecontact << "Toe\n";          face_contact = 1;}
-                        else if (min_trigger == 7) {facecontact << "Far Heel\n";     face_contact = -2;}
-                        else if (min_trigger == 6) {facecontact << "Far Heel\n";     face_contact = -2;}
-                        else if (min_trigger == 5) {facecontact << "Far Heel\n";     face_contact = -2;}
-                        else if (min_trigger == 4) {facecontact << "Heel\n";         face_contact = -1;}
-                        else {facecontact << "Center\n"; face_contact = 0;}
-                        SetWindowText(faceContactValue, facecontact.str().c_str());
-
-                        //wss << selected_club << "\n";
-                        int club = selected_club;
-                        double club_mass = 0;
-                        double club_loft = 0;
-                        double launch_angle = 0;
-                        double club_speed = 0;
-                        double smash_factor = 1.48;
-
-                        switch (club) {
-                        case Driver:
-                            club_mass = 180;
-                            club_loft = 10;
-                            launch_angle = 10.9;
-                            club_speed = 113;
-                            smash_factor = 1.48;
-                            break;
-                        case W3:
-                            club_mass = 190;
-                            club_loft = 16.5;
-                            launch_angle = 9.2;
-                            club_speed = 107;
-                            smash_factor = 1.48;
-                            break;
-                        case W5:
-                            club_mass = 200;
-                            club_loft = 21;
-                            launch_angle = 9.4;
-                            club_speed = 103;
-                            smash_factor = 1.47;
-                            break;
-                        case HY:
-                            club_mass = 195;
-                            club_loft = 19;
-                            launch_angle = 10.2;
-                            club_speed = 100;
-                            smash_factor = 1.46;
-                            break;
-                        case I3:
-                            club_mass = 230;
-                            club_loft = 19;
-                            launch_angle = 10.4;
-                            club_speed = 98;
-                            smash_factor = 1.45;
-                            break;
-                        case I4:
-                            club_mass = 237;
-                            club_loft = 21;
-                            launch_angle = 11.0;
-                            club_speed = 96;
-                            smash_factor = 1.43;
-                            break;
-                        case I5:
-                            club_mass = 244;
-                            club_loft = 23.5;
-                            launch_angle = 12.1;
-                            club_speed = 94;
-                            smash_factor = 1.41;
-                            break;
-                        case I6:
-                            club_mass = 251;
-                            club_loft = 26.5;
-                            launch_angle = 14.1;
-                            club_speed = 92;
-                            smash_factor = 1.38;
-                            break;
-                        case I7:
-                            club_mass = 258;
-                            club_loft = 30.5;
-                            launch_angle = 16.3;
-                            club_speed = 90;
-                            smash_factor = 1.33;
-                            break;
-                        case I8:
-                            club_mass = 265;
-                            club_loft = 34.5;
-                            launch_angle = 18.1;
-                            club_speed = 87;
-                            smash_factor = 1.32;
-                            break;
-                        case I9:
-                            club_mass = 270;
-                            club_loft = 38.5;
-                            launch_angle = 20.4;
-                            club_speed = 85;
-                            smash_factor = 1.28;
-                            break;
-                        case PW:
-                            club_mass = 300;
-                            club_loft = 43;
-                            launch_angle = 24.2;
-                            club_speed = 83;
-                            smash_factor = 1.23;
-                            break;
-                        case GW:
-                            club_mass = 300;
-                            club_loft = 48;
-                            launch_angle = 26;
-                            club_speed = 81;
-                            smash_factor = 1.21;
-                            break;
-                        case SW:
-                            club_mass = 300;
-                            club_loft = 54;
-                            launch_angle = 30;
-                            club_speed = 79;
-                            smash_factor = 1.19;
-                            break;
-                        case Putter:
-                            club_mass = 140;
-                            club_loft = 0;
-                            launch_angle = 0;
-                            club_speed = 10;
-                            smash_factor = 1.0;
-                            break;
-                        default:
-                            club_mass = 140;
-                            club_loft = 10;
-                            launch_angle = 10.9;
-                            club_speed = 114;
-                            smash_factor = 1.48;
-                            break;
-                        }
-
-                        //double ball_mass = 45.71; //grams
-                        //double club_speed = swing_speed * 0.44704;
-                        //double vball = ((club_speed * (1.67)) / (1.0 + (ball_mass / club_mass)));
-                        //double vballi = ((cos(club_loft * PI / 180)) * (cos(club_loft * PI / 180)) * (sin((90 - club_loft) * PI / 180)) * vball);
-                        //double Voy = sin(launch_angle * PI / 180) * vballi;
-                        //double Vox = cos(launch_angle * PI / 180) * vballi;
-                        //double time = 0.0;
-                        //double gravity = 9.8;
-                        //double y = 0.0;
-                        //y = (-0.5 * (gravity)*time * time) + (Voy *time);
-                        //while (y >= 0) {
-                        //    time = time + .01;
-                        //    y = (-0.5 * (gravity)*time * time) + (Voy * time);
-                        //}
-                        //double x = (Vox * time)* 1.09361; //m to yards
-                        //wss << "Traveled " << x << " yards in " << time << " seconds\n";
-
-                        if (max_trigger == 0) smash_factor = 0.5;
-                        else if (max_trigger == 1) smash_factor = 0.9;
-                        else if (max_trigger == 2) smash_factor = 0.9;
-                        else if (max_trigger == 3) smash_factor = 0.95;
-                        else if (min_trigger == 7) smash_factor = 0.9;
-                        else if (min_trigger == 6) smash_factor = 0.9;
-                        else if (min_trigger == 5) smash_factor = 0.9;
-                        else if (min_trigger == 4) smash_factor = 0.95;
-
-                        if (club == Putter) {
-                            backswingstepsize = 20;
-                            forwardswingstepsize = 75;
-                            if(swing_speed > 5.5) midswingdelay = 100 + (1500 * (swing_speed / club_speed));
-                            else midswingdelay = 100 + (1000 * (swing_speed / club_speed));
-                        }
-                        else {
-                            backswingstepsize = int(20.0 * smash_factor);
-                            forwardswingstepsize = int(75.0 * smash_factor);
-
-                            midswingdelay = 100 + (525.0 * (swing_speed / club_speed));
-                        }
-                        slope = double(path)/6;
-
-                        sidescale = average / -100.0;
-                        sideaccel = 1.2;
-                        
-                        RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
                         takeShot();
 
                         //TODO: determine sleep time, hopefully just one good delay time will work
@@ -859,13 +869,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     /////////////////////////////////////////////// USB CODE ////////////
 
-    int r, i, loop = 0;
+    int r, loop = 0;
     libusb_device_handle* handle = NULL;
     uint8_t endpoint = 1;
     int size = 60;
     uint8_t* report_buffer;
     report_buffer = (uint8_t*)calloc(size, 1);
     hid_device* dev;
+
+    fopen_s(&fp, "data_log.txt", "a+");
 
     ////////// LIBUSB SETUP //////////
     // Optishot VID:PID
@@ -935,6 +947,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
     }
     libusb_exit(NULL);
+    fclose(fp);
 
     ////////////////////////////////////////////////////////// END USB CODE /////////
     if(handle != NULL) return (int)msg.wParam;
@@ -999,10 +1012,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     int y_offset = 10;
 #ifdef _DEBUG
     CreateWindowW(TEXT("Static"), TEXT("Backswing Step Size"), WS_CHILD | WS_VISIBLE, 10, y_offset, 200, 20, hWnd, NULL, NULL, NULL);
-    backswingstepsizeValue = CreateWindowW(TEXT("Edit"), TEXT("20"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
+    backswingstepsizeValue = CreateWindowW(TEXT("Edit"), TEXT("6"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
     y_offset += 20;
     CreateWindowW(TEXT("Static"), TEXT("Backswing Steps"), WS_CHILD | WS_VISIBLE, 10, y_offset, 200, 20, hWnd, NULL, NULL, NULL);
-    backswingstepsValue = CreateWindowW(TEXT("Edit"), TEXT("15"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
+    backswingstepsValue = CreateWindowW(TEXT("Edit"), TEXT("45"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
     y_offset += 20;
 
     CreateWindowW(TEXT("Static"), TEXT("Midswing Delay"), WS_CHILD | WS_VISIBLE, 10, y_offset, 200, 20, hWnd, NULL, NULL, NULL);
@@ -1010,10 +1023,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     y_offset += 20;
 
     CreateWindowW(TEXT("Static"), TEXT("Frontswing Step Size"), WS_CHILD | WS_VISIBLE, 10, y_offset, 200, 20, hWnd, NULL, NULL, NULL);
-    forwardswingstepsizeValue = CreateWindowW(TEXT("Edit"), TEXT("75"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
+    forwardswingstepsizeValue = CreateWindowW(TEXT("Edit"), TEXT("25"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
     y_offset += 20;
     CreateWindowW(TEXT("Static"), TEXT("Frongswing Steps"), WS_CHILD | WS_VISIBLE, 10, y_offset, 200, 20, hWnd, NULL, NULL, NULL);
-    forwardswingstepsValue = CreateWindowW(TEXT("Edit"), TEXT("10"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
+    forwardswingstepsValue = CreateWindowW(TEXT("Edit"), TEXT("30"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
     y_offset += 20;
 
     CreateWindowW(TEXT("Static"), TEXT("Slope"), WS_CHILD | WS_VISIBLE, 10, y_offset, 200, 20, hWnd, NULL, NULL, NULL);
@@ -1021,11 +1034,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     y_offset += 20;
 
     CreateWindowW(TEXT("Static"), TEXT("Side Accel"), WS_CHILD | WS_VISIBLE, 10, y_offset, 200, 20, hWnd, NULL, NULL, NULL);
-    sideaccelValue = CreateWindowW(TEXT("Edit"), TEXT("1.008"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
+    sideaccelValue = CreateWindowW(TEXT("Edit"), TEXT("1.05"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
     y_offset += 20;
     CreateWindowW(TEXT("Static"), TEXT("Side Accel Scale"), WS_CHILD | WS_VISIBLE, 10, y_offset, 200, 20, hWnd, NULL, NULL, NULL);
     sidescaleValue = CreateWindowW(TEXT("Edit"), TEXT("0.0"), WS_CHILD | WS_VISIBLE | WS_BORDER, 215, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
     y_offset += 30;
+    collectshotValue = CreateWindowW(TEXT("BUTTON"), TEXT("Collect Shots"), WS_CHILD | WS_VISIBLE | WS_BORDER | BS_AUTOCHECKBOX, 10, y_offset, 100, 20, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
+    replayData = CreateWindowW(TEXT("Edit"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 110, y_offset, 100, 20, hWnd, NULL, NULL, NULL);
+    replayButton = CreateWindowW(TEXT("BUTTON"), TEXT("Replay Shot"), WS_CHILD | WS_VISIBLE | WS_BORDER | BS_DEFPUSHBUTTON, 210, y_offset, 100, 20, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
+    y_offset += 30;
+
 #endif
 
     clickmouseValue = CreateWindowW(TEXT("BUTTON"), TEXT("Take Shot"), WS_CHILD | WS_VISIBLE | WS_BORDER | BS_AUTOCHECKBOX, 10, y_offset, 100, 20, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
@@ -1080,7 +1098,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 // radians - Angle of rotation in radians
 // clrBack - Color of pixels in the resulting bitmap that do
 // not get covered by source pixels
-HBITMAP GetRotatedBitmapNT(HDC hdc, HBITMAP hBitmap, float radians, COLORREF clrBack)
+HBITMAP GetRotatedBitmapNT(HDC hdc, HBITMAP hBitmap, double radians, COLORREF clrBack)
 {
     // Create a memory DC compatible with the display
     HDC sourceHDC = CreateCompatibleDC(hdc);
@@ -1187,8 +1205,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 #ifdef _DEBUG
         if (lParam == LPARAM(backswingstepsizeValue)) {
             TCHAR buff[1024];
+            LPTSTR endPtr;
             GetWindowText(backswingstepsizeValue, buff, 1024);
-            backswingstepsize = _wtoi(buff);
+            backswingstepsize = _tcstod(buff, &endPtr);
         }
         else if (lParam == LPARAM(backswingstepsValue)) {
             TCHAR buff[1024];
@@ -1202,8 +1221,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         else if (lParam == LPARAM(forwardswingstepsizeValue)) {
             TCHAR buff[1024];
+            LPTSTR endPtr;
             GetWindowText(forwardswingstepsizeValue, buff, 1024);
-            forwardswingstepsize = _wtoi(buff);
+            forwardswingstepsize = _tcstod(buff, &endPtr);
         }
         else if (lParam == LPARAM(forwardswingstepsValue)) {
             TCHAR buff[1024];
@@ -1227,6 +1247,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             LPTSTR endPtr;
             GetWindowText(sidescaleValue, buff, 1024);
             sidescale = _tcstod(buff, &endPtr);
+        }
+        else if (lParam == LPARAM(replayButton)) {
+            TCHAR buff[1024];
+            LPTSTR endPtr;
+            GetWindowText(replayData, buff, 1024);
+            int data_size = 60;
+            uint8_t* data;
+            data = (uint8_t*)calloc(data_size, 1);
+            TCHAR* pch;
+            wchar_t* context;
+            pch = wcstok_s(buff, L",", &context);
+            int i = 0;
+            bool fullDataSet = FALSE;
+            while (pch != NULL && i < data_size) {
+                data[i] = _wtoi(pch);
+                pch = wcstok_s(NULL, L",", &context);
+                i++;
+                if (i == 60) fullDataSet = TRUE;
+            }
+            if (fullDataSet) {
+                processShotData(data, data_size);
+                takeShot();
+            }
+        }
+        else if (lParam == LPARAM(collectshotValue)) {
+            TCHAR buff[1024];
+            GetWindowText(collectshotValue, buff, 1024);
+            logging = !logging;
         }
         else if (lParam == LPARAM(clickmouseValue)) {
 #else
@@ -1297,11 +1345,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HDC             hdcMem;
         HGDIOBJ         oldBitmap;
 
-#ifdef _DEBUG
-        int top = 285;
-#else
-        int top = 110;
-#endif
+        int top = WINDOW_Y_SIZE - 215;
         int left = 10;
         int height = 150;
         int width = 305;
@@ -1330,7 +1374,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GetObject(club_image, sizeof(bitmap), &bitmap);
 
         double path_offset = swing_path * .08333;
-        BitBlt(hdc, left + 155, top + 25 + (path_offset * 55) + (face_contact * 17), left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+        BitBlt(hdc, left + 155, top + 25 + int(path_offset * 55) + (face_contact * 17), left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
 
         SelectObject(hdcMem, oldBitmap);
         DeleteDC(hdcMem);
@@ -1338,8 +1382,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         //Draw the path line
         HPEN hPen = CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
         HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
-        MoveToEx(hdc, left + 27, top + 75 - (path_offset * 100), 0);
-        LineTo(hdc, left + 227, top + 75 + (path_offset * 100));
+        MoveToEx(hdc, left + 27, top + 75 - int(path_offset * 100), 0);
+        LineTo(hdc, left + 227, top + 75 + int(path_offset * 100));
         SelectObject(hdc, hOldPen);
         DeleteObject(hPen);
 
