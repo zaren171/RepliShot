@@ -4,6 +4,7 @@
 #include "framework.h"
 #include "RepliShot.h"
 #include <Windows.h>
+#include <WinUser.h>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -658,17 +659,19 @@ void processShotData(uint8_t* data, int data_size) {
     }
     else {
         backswingstepsize = 7.0 * current_club.smash_factor;
-        forwardswingstepsize = 25.0 * current_club.smash_factor;
+        forwardswingstepsize = 25.0 * current_club.smash_factor; // 15/50 goes right, 150/7 goes left, no control beyond default
 
-        midswingdelay = 200 + int(425.0 * (swing_speed / current_club.club_speed));
+        midswingdelay = 175 + int(450.0 * (swing_speed / current_club.club_speed));
     }
-    slope = double(path) / 6;
+    slope = path * .08333333; //affects ball trajectory (point left/right for shot), unfortunately Opti has rough granulatiry
 
-    double off_angle = (atan(path * -.08333333) * 180 / PI) - average;
+    double off_angle = (atan(slope) * -180 / PI) - average;
 
-    sidescale = off_angle / 10;
-    sideaccel = 1.05;
+    slope += tan(off_angle* PI / 180) / 5; //ball launch adjustment based on how open/closed the club is relative to the path
 
+    sideaccel = off_angle; //only control on swing is how fast the club goes forward
+    sidescale = 0;         //can control by holding shift and pressing left/right
+    
     RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
 }
 
@@ -702,15 +705,86 @@ void preciseSleep(double seconds) {
     while ((high_resolution_clock::now() - start).count() / 1e9 < seconds);
 }
 
+void setCurve()
+{
+    INPUT inputs[2] = {};
+    ZeroMemory(inputs, sizeof(inputs));
+
+    inputs[0].type = INPUT_KEYBOARD; //tap Z to change club
+    inputs[0].ki.wVk = 0x5A;
+    inputs[0].ki.dwFlags = 0;
+
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = 0x5A;
+    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+    SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+    Sleep(10);
+
+    inputs[0].type = INPUT_KEYBOARD; //tap x to go back to same club
+    inputs[0].ki.wVk = 0x58;         //this resets the shot curve to be straight
+    inputs[0].ki.dwFlags = 0;
+
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = 0x58;
+    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+    SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+    Sleep(10);
+
+    inputs[0].type = INPUT_KEYBOARD;
+    inputs[0].ki.wVk = VK_LSHIFT;
+    inputs[0].ki.dwFlags = 0;
+
+    if (sideaccel > 0) {
+        inputs[1].type = INPUT_KEYBOARD;
+        inputs[1].ki.wVk = VK_RIGHT;
+        inputs[1].ki.dwFlags = 0 | KEYEVENTF_EXTENDEDKEY;
+
+        SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+        preciseSleep(abs(sideaccel) / 25.0);
+
+        inputs[0].type = INPUT_KEYBOARD;
+        inputs[0].ki.wVk = VK_RIGHT;
+        inputs[0].ki.dwFlags = KEYEVENTF_KEYUP | KEYEVENTF_EXTENDEDKEY;
+    }
+    else if(sideaccel < 0) {
+        inputs[1].type = INPUT_KEYBOARD;
+        inputs[1].ki.wVk = VK_LEFT;
+        inputs[1].ki.dwFlags = 0 | KEYEVENTF_EXTENDEDKEY;
+
+        SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+        preciseSleep(abs(sideaccel) / 25.0);
+
+        inputs[0].type = INPUT_KEYBOARD;
+        inputs[0].ki.wVk = VK_LEFT;
+        inputs[0].ki.dwFlags = KEYEVENTF_KEYUP | KEYEVENTF_EXTENDEDKEY;
+    }
+
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = VK_LSHIFT;
+    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+    SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+    Sleep(10);
+}
+
 void takeShot() {
     double cursorX = desktop_width/2;
     double cursorY = desktop_height/2;
     int backswingspeed = 6;
     int forwardswingspeed = 5; //lower is faster
-    double local_sideaccel = sideaccel;
+    //double local_sideaccel = sideaccel;
 
     SetCursorPos(cursorX, cursorY);
-    if (clickMouse) mouse_event(MOUSEEVENTF_LEFTDOWN, cursorX, cursorY, 0, 0);
+    if (clickMouse) {
+        mouse_event(MOUSEEVENTF_LEFTDOWN, cursorX, cursorY, 0, 0); //click the window to ensure it's in focus before doing keyboard stuff
+        Sleep(100);
+        mouse_event(MOUSEEVENTF_LEFTUP, cursorX, cursorY, 0, 0);
+        Sleep(100);
+        setCurve();
+        mouse_event(MOUSEEVENTF_LEFTDOWN, cursorX, cursorY, 0, 0); //click for start of shot
+    }
     for (int i = 0; i < backswingsteps; i++) {
         cursorY += backswingstepsize;
         cursorX -= slope*backswingstepsize;
@@ -725,9 +799,9 @@ void takeShot() {
     for (int i = 0; i < forwardswingsteps; i++) {
         cursorY -= forwardswingstepsize;
         cursorX += slope* double(forwardswingstepsize);
-        local_sideaccel = pow(local_sideaccel, 1.2);
-        if (local_sideaccel > desktop_width) local_sideaccel = desktop_width;
-        cursorX += int(local_sideaccel * sidescale);
+        //local_sideaccel = pow(local_sideaccel, 1.2);
+        //if (local_sideaccel > desktop_width) local_sideaccel = desktop_width;
+        //cursorX += int(local_sideaccel * sidescale);
         if (cursorX < 0) cursorX = 0;
         if (cursorX > desktop_width) cursorX = desktop_width;
         if (cursorY < 0) cursorY = 0;
