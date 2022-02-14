@@ -667,7 +667,8 @@ void processShotData(uint8_t* data, int data_size) {
 
     double off_angle = (atan(slope) * -180 / PI) - average;
 
-    slope += tan(off_angle* PI / 180) / 5; //ball launch adjustment based on how open/closed the club is relative to the path
+    //slope += tan(off_angle* PI / 180) / 5; //ball launch adjustment based on how open/closed the club is relative to the path
+    slope *= 2.5; //scaling as TGC has a "deadzone"
 
     sideaccel = off_angle; //only control on swing is how fast the club goes forward
     sidescale = 0;         //can control by holding shift and pressing left/right
@@ -798,7 +799,7 @@ void takeShot() {
     preciseSleep(double(midswingdelay)/1000.0); //convert ms to s
     for (int i = 0; i < forwardswingsteps; i++) {
         cursorY -= forwardswingstepsize;
-        cursorX += slope* double(forwardswingstepsize);
+        cursorX += slope*forwardswingstepsize;
         //local_sideaccel = pow(local_sideaccel, 1.2);
         //if (local_sideaccel > desktop_width) local_sideaccel = desktop_width;
         //cursorX += int(local_sideaccel * sidescale);
