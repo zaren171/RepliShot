@@ -711,6 +711,17 @@ void setCurve()
     INPUT inputs[2] = {};
     ZeroMemory(inputs, sizeof(inputs));
 
+    inputs[0].type = INPUT_KEYBOARD; //tap W, sometimes the first keyboard input is missed, so this one is throw away
+    inputs[0].ki.wVk = 0x57;
+    inputs[0].ki.dwFlags = 0;
+
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = 0x57;
+    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+    SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+    Sleep(10);
+
     inputs[0].type = INPUT_KEYBOARD; //tap Z to change club
     inputs[0].ki.wVk = 0x5A;
     inputs[0].ki.dwFlags = 0;
