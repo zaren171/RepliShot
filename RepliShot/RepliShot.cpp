@@ -661,13 +661,13 @@ void processShotData(uint8_t* data, int data_size) {
         backswingstepsize = 7.0 * current_club.smash_factor;
         forwardswingstepsize = 25.0 * current_club.smash_factor; // 15/50 goes right, 150/7 goes left, no control beyond default
 
-        midswingdelay = 175 + int(450.0 * (swing_speed / current_club.club_speed));
+        midswingdelay = 100 + int(525.0 * (swing_speed / current_club.club_speed));
     }
     slope = path * .08333333; //affects ball trajectory (point left/right for shot), unfortunately Opti has rough granulatiry
 
     double off_angle = (atan(slope) * -180 / PI) - average;
 
-    //slope += tan(off_angle* PI / 180) / 5; //ball launch adjustment based on how open/closed the club is relative to the path
+    slope += tan(off_angle* PI / 180) / 5; //ball launch adjustment based on how open/closed the club is relative to the path
     slope *= 2.5; //scaling as TGC has a "deadzone"
 
     sideaccel = off_angle; //only control on swing is how fast the club goes forward
@@ -794,7 +794,7 @@ void takeShot() {
         Sleep(100);
         mouse_event(MOUSEEVENTF_LEFTUP, cursorX, cursorY, 0, 0);
         Sleep(100);
-        setCurve();
+        if(selected_club != Putter) setCurve();
         mouse_event(MOUSEEVENTF_LEFTDOWN, cursorX, cursorY, 0, 0); //click for start of shot
     }
     for (int i = 0; i < backswingsteps; i++) {
@@ -890,7 +890,7 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
 
                         bool increment = FALSE;
                         for (int i = 0; i < data_size; i += 5) {
-                            if ((data[i] & 0x80) != 0) {
+                            if ((data[i] & 0xE0) != 0) {
                                 increment = TRUE;
                             }
                         }
