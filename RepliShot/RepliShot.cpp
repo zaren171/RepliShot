@@ -657,11 +657,20 @@ void processShotData(uint8_t* data, int data_size) {
         if (swing_speed > 5.5) midswingdelay = 100 + int(1500 * (swing_speed / current_club.club_speed));
         else midswingdelay = 100 + int(1000 * (swing_speed / current_club.club_speed));
     }
-    else {
+    else
+    {
         backswingstepsize = 7.0 * current_club.smash_factor;
         forwardswingstepsize = 25.0 * current_club.smash_factor; // 15/50 goes right, 150/7 goes left, no control beyond default
 
-        midswingdelay = 100 + int(525.0 * (swing_speed / current_club.club_speed));
+        if (selected_club > I9) { // Wedges
+            midswingdelay = 100 + int(500.0 * (swing_speed / current_club.club_speed));
+        }
+        else if (selected_club > W5) { // Hybrid and Irons
+            midswingdelay = 50 + int(575.0 * (swing_speed / current_club.club_speed));
+        }
+        else { // Driver and Woods
+            midswingdelay = 100 + int(525.0 * (swing_speed / current_club.club_speed));
+        }
     }
     slope = path * .08333333; //affects ball trajectory (point left/right for shot), unfortunately Opti has rough granulatiry
 
