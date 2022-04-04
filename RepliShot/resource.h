@@ -15,9 +15,9 @@
 #define IDB_GOLF_BALL_BITMAP            130
 #define IDB_DRIVER_BITMAP               131
 #define IDB_IRON_BITMAP                 132
-#define IDB_BITMAP1                     133
 #define IDB_PUTTER_BITMAP               133
 #define ID_FILE_KEEPONTOP               32771
+#define ID_FILE_LEFTHANDMODE            32772
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -26,7 +26,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        134
-#define _APS_NEXT_COMMAND_VALUE         32772
+#define _APS_NEXT_COMMAND_VALUE         32773
 #define _APS_NEXT_CONTROL_VALUE         1000
 #define _APS_NEXT_SYMED_VALUE           110
 #endif

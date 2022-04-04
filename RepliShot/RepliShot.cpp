@@ -110,6 +110,7 @@ static bool collect_swing = FALSE;
 static bool keep_polling = TRUE;
 static bool on_top = FALSE;
 static bool opti_connected = FALSE;
+static bool lefty = FALSE;
 
 enum golf_club {Driver, W3, W5, HY, I3, I4, I5, I6, I7, I8, I9, PW, GW, SW, Putter};
 
@@ -595,9 +596,16 @@ void processShotData(uint8_t* data, int data_size) {
     //wss << "Face Angle: ";
     std::wstringstream faceangle;
     faceangle << std::fixed << std::setw(3) << std::setprecision(1);
-    if (average > 0) faceangle << "Closed " << average << "\n";
-    else if (average < 0) faceangle << "Open " << abs(average) << "\n";
-    else faceangle << "Square " << abs(average) << "\n";
+    if (lefty) {
+        if (average > 0) faceangle << "Open " << average << "\n";
+        else if (average < 0) faceangle << "Closed " << abs(average) << "\n";
+        else faceangle << "Square " << abs(average) << "\n";
+    }
+    else {
+        if (average > 0) faceangle << "Closed " << average << "\n";
+        else if (average < 0) faceangle << "Open " << abs(average) << "\n";
+        else faceangle << "Square " << abs(average) << "\n";
+    }
     SetWindowText(faceAngleValue, faceangle.str().c_str());
     swing_angle = average;
 
@@ -609,15 +617,28 @@ void processShotData(uint8_t* data, int data_size) {
     //printf("%d ", path);
     //wss << "Path: ";
     std::wstringstream clubpath;
-    if (abs(path) > 3) {
-        if (path > 0) clubpath << "Very Inside/Out\n";
-        else clubpath << "Very Outside/In\n";
+    if (lefty) {
+        if (abs(path) > 3) {
+            if (path > 0) clubpath << "Very Outside/In\n";
+            else clubpath << "Very Inside/Out\n";
+        }
+        else if (abs(path) > 1) {
+            if (path > 0) clubpath << "Outside/In\n";
+            else clubpath << "Inside/Out\n";
+        }
+        else clubpath << "On Plane\n";
     }
-    else if (abs(path) > 1) {
-        if (path > 0) clubpath << "Inside/Out\n";
-        else clubpath << "Outside/In\n";
+    else {
+        if (abs(path) > 3) {
+            if (path > 0) clubpath << "Very Inside/Out\n";
+            else clubpath << "Very Outside/In\n";
+        }
+        else if (abs(path) > 1) {
+            if (path > 0) clubpath << "Inside/Out\n";
+            else clubpath << "Outside/In\n";
+        }
+        else clubpath << "On Plane\n";
     }
-    else clubpath << "On Plane\n";
     SetWindowText(pathValue, clubpath.str().c_str());
     swing_path = path;
 
@@ -627,15 +648,28 @@ void processShotData(uint8_t* data, int data_size) {
     //Only using back, matches OS software better, and makes more sense as the front is way after the ball
     int max_trigger = max_back; // max(max_front, max_back);
     int min_trigger = min_back; // max(min_front, min_back);
-    if (max_trigger == 0) { facecontact << "Missed\n"; face_contact = 3; }
-    else if (max_trigger == 1) { facecontact << "Extreme Toe\n";  face_contact = 2; }
-    else if (max_trigger == 2) { facecontact << "Extreme Toe\n";  face_contact = 2; }
-    else if (max_trigger == 3) { facecontact << "Toe\n";          face_contact = 1; }
-    else if (min_trigger == 7) { facecontact << "Far Heel\n";     face_contact = -2; }
-    else if (min_trigger == 6) { facecontact << "Far Heel\n";     face_contact = -2; }
-    else if (min_trigger == 5) { facecontact << "Far Heel\n";     face_contact = -2; }
-    else if (min_trigger == 4) { facecontact << "Heel\n";         face_contact = -1; }
-    else { facecontact << "Center\n"; face_contact = 0; }
+    if (lefty) {
+        if (min_trigger == 7) { facecontact << "Missed\n"; face_contact = 3; }
+        else if (min_trigger == 6) { facecontact << "Extreme Toe\n";  face_contact = 2; }
+        else if (min_trigger == 5) { facecontact << "Extreme Toe\n";  face_contact = 2; }
+        else if (min_trigger == 4) { facecontact << "Toe\n";          face_contact = 1; }
+        else if (max_trigger == 0) { facecontact << "Far Heel\n";     face_contact = -2; }
+        else if (max_trigger == 1) { facecontact << "Far Heel\n";     face_contact = -2; }
+        else if (max_trigger == 2) { facecontact << "Far Heel\n";     face_contact = -2; }
+        else if (max_trigger == 3) { facecontact << "Heel\n";         face_contact = -1; }
+        else { facecontact << "Center\n"; face_contact = 0; }
+    }
+    else {
+        if (max_trigger == 0) { facecontact << "Missed\n"; face_contact = 3; }
+        else if (max_trigger == 1) { facecontact << "Extreme Toe\n";  face_contact = 2; }
+        else if (max_trigger == 2) { facecontact << "Extreme Toe\n";  face_contact = 2; }
+        else if (max_trigger == 3) { facecontact << "Toe\n";          face_contact = 1; }
+        else if (min_trigger == 7) { facecontact << "Far Heel\n";     face_contact = -2; }
+        else if (min_trigger == 6) { facecontact << "Far Heel\n";     face_contact = -2; }
+        else if (min_trigger == 5) { facecontact << "Far Heel\n";     face_contact = -2; }
+        else if (min_trigger == 4) { facecontact << "Heel\n";         face_contact = -1; }
+        else { facecontact << "Center\n"; face_contact = 0; }
+    }
     SetWindowText(faceContactValue, facecontact.str().c_str());
 
     //wss << selected_club << "\n";
@@ -1225,7 +1259,7 @@ HBITMAP GetRotatedBitmapNT(HDC hdc, HBITMAP hBitmap, double radians, COLORREF cl
 
     // Create a bitmap to hold the result
     HBITMAP hbmResult = CreateCompatibleBitmap(hdc, w, h);
-    
+
     HBITMAP hbmOldSource = (HBITMAP)SelectObject(sourceHDC, hBitmap);
     HBITMAP hbmOldDest = (HBITMAP)SelectObject(destHDC, hbmResult);
 
@@ -1417,6 +1451,47 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SetMenuItemInfo(hmenu, ID_FILE_KEEPONTOP, FALSE, &menuItem);
 
             break;
+        case ID_FILE_LEFTHANDMODE:
+            lefty = !lefty;
+
+            GetMenuItemInfo(hmenu, ID_FILE_LEFTHANDMODE, FALSE, &menuItem);
+
+            if (menuItem.fState == MFS_CHECKED) {
+                // Checked, uncheck it
+                menuItem.fState = MFS_UNCHECKED;
+            }
+            else {
+                // Unchecked, check it
+                menuItem.fState = MFS_CHECKED;
+            }
+            SetMenuItemInfo(hmenu, ID_FILE_LEFTHANDMODE, FALSE, &menuItem);
+
+            //flip bitmaps for lefty mode toggle
+            PAINTSTRUCT ps;
+            BITMAP bm;
+            HDC hdc;
+            HDC sourceHDC;
+            HBITMAP hbmOldSource;
+
+            hdc = BeginPaint(hWnd, &ps);
+            sourceHDC = CreateCompatibleDC(hdc);
+
+            hbmOldSource = (HBITMAP)SelectObject(sourceHDC, driver_bmap);
+            GetObject(driver_bmap, sizeof(bm), &bm);
+            StretchBlt(sourceHDC, 0, 0, bm.bmWidth, bm.bmHeight, sourceHDC, 0, bm.bmHeight - 1, bm.bmWidth, -bm.bmHeight, SRCCOPY);
+            SelectObject(sourceHDC, hbmOldSource);
+
+            hbmOldSource = (HBITMAP)SelectObject(sourceHDC, iron_bmap);
+            GetObject(driver_bmap, sizeof(bm), &bm);
+            StretchBlt(sourceHDC, 0, 0, bm.bmWidth, bm.bmHeight, sourceHDC, 0, bm.bmHeight - 1, bm.bmWidth, -bm.bmHeight, SRCCOPY);
+            SelectObject(sourceHDC, hbmOldSource);
+
+            hbmOldSource = (HBITMAP)SelectObject(sourceHDC, putter_bmap);
+            GetObject(driver_bmap, sizeof(bm), &bm);
+            StretchBlt(sourceHDC, 0, 0, bm.bmWidth, bm.bmHeight, sourceHDC, 0, bm.bmHeight - 1, bm.bmWidth, -bm.bmHeight, SRCCOPY);
+            SelectObject(sourceHDC, hbmOldSource);
+
+            break;
         case IDM_EXIT:
             DestroyWindow(hWnd);
             break;
@@ -1450,7 +1525,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         oldBitmap = SelectObject(hdcMem, golfball_bmap);
 
         GetObject(golfball_bmap, sizeof(bitmap), &bitmap);
-        BitBlt(hdc, left+100, top+50, left+bitmap.bmWidth, top+bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+        BitBlt(hdc, left+135, top+50, left+bitmap.bmWidth, top+bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
 
         SelectObject(hdcMem, oldBitmap);
         DeleteDC(hdcMem);
@@ -1461,6 +1536,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         else if (selected_club == Putter) club_image = putter_bmap;
         else club_image = iron_bmap;
 
+        if (lefty) swing_angle += 180;
         club_image = GetRotatedBitmapNT(hdc, club_image, (swing_angle * PI / 180.0), COLORREF(0x00FFFFFF));
 
         hdcMem = CreateCompatibleDC(hdc);
@@ -1469,7 +1545,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GetObject(club_image, sizeof(bitmap), &bitmap);
 
         double path_offset = swing_path * .08333;
-        BitBlt(hdc, left + 155, top + 25 + int(path_offset * 55) + (face_contact * 17), left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+        if(lefty) BitBlt(hdc, left + 97 - bitmap.bmWidth, top + 25 + int(path_offset * -55) + (face_contact * 17), left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+        else  BitBlt(hdc, left + 220, top + 25 + int(path_offset * 55) + (face_contact * 17), left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
 
         SelectObject(hdcMem, oldBitmap);
         DeleteDC(hdcMem);
@@ -1477,8 +1554,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         //Draw the path line
         HPEN hPen = CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
         HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
-        MoveToEx(hdc, left + 27, top + 75 - int(path_offset * 100), 0);
-        LineTo(hdc, left + 227, top + 75 + int(path_offset * 100));
+        MoveToEx(hdc, 70, top + 75 - int(path_offset * 100), 0);
+        LineTo(hdc, 270, top + 75 + int(path_offset * 100));
         SelectObject(hdc, hOldPen);
         DeleteObject(hPen);
 
