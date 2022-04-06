@@ -19,6 +19,8 @@ The "Club Speed", "Face Angle", "Path", and "Face Contact" will dispay the measu
 
 Under the File menu there is an option to keep Replishot on top of other programs.  This is helpful so that you can continue to see Replishot while TGC2019 is running in full screen.
 
+Under the File menu there is also an option for left handed mode, which will adjust the display of metrics, etc. so they are correctly reported for left handed swings.
+
 In general Replishot works well with the "Normal" shot selection in TGC.  For close shots, such as chipping, I personally feel that the "Pitch" setting is more accuarte.  Due to TGC's 5% power increments it is hard to get reliable range on short shots taken in "Normal" mode.  The following screen shot shows TGC's shot preview information.  Pressing "C" will change the shot type, which will change the maximum carry yrds shown.  Note that TGC will automatically change this setting, typically giving you a shot type that will require a full swing.
 
 ![Shot Settings Screenshot](https://github.com/zaren171/RepliShot/blob/master/TGC_Shot_Settings.PNG)
