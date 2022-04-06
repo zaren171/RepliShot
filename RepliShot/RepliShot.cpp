@@ -22,6 +22,7 @@
 #include <chrono>
 #include <thread>
 #include <math.h>
+#include <algorithm>
 
 #include "hidapi.h"
 #include "libusb.h"
@@ -932,17 +933,44 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                     if (front) { //if it's only the front sensor, use it to change the club selection
 
                         bool increment = FALSE;
+                        uint8_t agregate = 0x00;
                         for (int i = 0; i < data_size; i += 5) {
                             if ((data[i] & 0xE0) != 0) {
+                                agregate = agregate | data[i];
                                 increment = TRUE;
                             }
                         }
 
-                        if (increment) {
+                        INPUT inputs[2] = {};
+                        ZeroMemory(inputs, sizeof(inputs));
+
+                        inputs[0].type = INPUT_KEYBOARD; //tap W, sometimes the first keyboard input is missed, so this one is throw away
+                        inputs[0].ki.wVk = 0x57;
+                        inputs[0].ki.dwFlags = 0;
+
+                        inputs[1].type = INPUT_KEYBOARD;
+                        inputs[1].ki.wVk = 0x57;
+                        inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+                        SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+                        Sleep(10);
+                        if (agregate == 0xFF) { //full swipe over sensor, change shot shape
+                            inputs[0].type = INPUT_KEYBOARD; //tap C to change shot
+                            inputs[0].ki.wVk = 0x43;
+                            inputs[0].ki.dwFlags = 0;
+
+                            inputs[1].type = INPUT_KEYBOARD;
+                            inputs[1].ki.wVk = 0x43;
+                            inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+                            SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+                            Sleep(10);
+                        }
+                        else if (increment) { //also press "Z"
                             if (selected_club > Driver) selected_club--;
                             else selected_club = Putter;
                         }
-                        else {
+                        else { //also press "X"
                             if (selected_club < Putter) selected_club++;
                             else selected_club = Driver;
                         }
@@ -1218,6 +1246,56 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     //  in the selection field  
     SendMessage(clubSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
+
+    // std::ifstream is RAII, i.e. no need to call close
+    std::ifstream cFile("config.ini");
+    if (cFile.is_open())
+    {
+        std::string line;
+        while (getline(cFile, line))
+        {
+            line.erase(std::remove_if(line.begin(), line.end(), isspace),
+                line.end());
+            if (line.empty() || line[0] == '#')
+            {
+                continue;
+            }
+            auto delimiterPos = line.find("=");
+            auto name = line.substr(0, delimiterPos);
+            auto value = line.substr(delimiterPos + 1);
+
+            if (!(name.compare("Ball") || value.compare("False"))) {
+                usingball = FALSE;
+                Button_SetCheck(usingballValue, BST_UNCHECKED);
+            }
+            else if (!(name.compare("Shot") || value.compare("True"))) {
+                clickMouse = TRUE;
+                Button_SetCheck(clickmouseValue, BST_CHECKED);
+            }
+            else if (!(name.compare("Top") || value.compare("True"))) {
+                on_top = TRUE;
+                SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+                HMENU hmenu = GetMenu(hWnd);
+                MENUITEMINFO menuItem = { 0 };
+                menuItem.cbSize = sizeof(MENUITEMINFO);
+                menuItem.fMask = MIIM_STATE;
+                GetMenuItemInfo(hmenu, ID_FILE_KEEPONTOP, FALSE, &menuItem);
+                menuItem.fState = MFS_CHECKED;
+                SetMenuItemInfo(hmenu, ID_FILE_KEEPONTOP, FALSE, &menuItem);
+            }
+            else if (!(name.compare("Lefty") || value.compare("True"))) {
+                lefty = TRUE;
+                HMENU hmenu = GetMenu(hWnd);
+                MENUITEMINFO menuItem = { 0 };
+                menuItem.cbSize = sizeof(MENUITEMINFO);
+                menuItem.fMask = MIIM_STATE;
+                GetMenuItemInfo(hmenu, ID_FILE_LEFTHANDMODE, FALSE, &menuItem);
+                menuItem.fState = MFS_CHECKED;
+                SetMenuItemInfo(hmenu, ID_FILE_LEFTHANDMODE, FALSE, &menuItem);
+            }
+        }
+    }
+
     return TRUE;
 }
 
@@ -1421,6 +1499,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         else if (lParam == LPARAM(reswingButton)) {
             takeShot();
         }
+
+        std::ofstream cfgfile;
         
         // Parse the menu selections:
         switch (wmId)
@@ -1491,6 +1571,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             StretchBlt(sourceHDC, 0, 0, bm.bmWidth, bm.bmHeight, sourceHDC, 0, bm.bmHeight - 1, bm.bmWidth, -bm.bmHeight, SRCCOPY);
             SelectObject(sourceHDC, hbmOldSource);
 
+            break;
+        case ID_FILE_SAVECONFIG:
+            cfgfile.open("config.ini");
+            //take shot
+            if (clickMouse) cfgfile << "Shot=True\n";
+            else cfgfile << "Shot=False\n";
+            //use ball
+            if (usingball) cfgfile << "Ball=True\n";
+            else cfgfile << "Ball=False\n";
+            //on top
+            if (on_top) cfgfile << "Top=True\n";
+            else cfgfile << "Top=False\n";
+            //lefty
+            if (lefty) cfgfile << "Lefty=True\n";
+            else cfgfile << "Lefty=False\n";
+            //clubs
+            cfgfile.close();
             break;
         case IDM_EXIT:
             DestroyWindow(hWnd);
