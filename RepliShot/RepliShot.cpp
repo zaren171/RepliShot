@@ -27,6 +27,14 @@
 #include "hidapi.h"
 #include "libusb.h"
 
+
+//#include <WinSock2.h>
+//// Need to link with Ws2_32.lib
+//#pragma comment (lib, "Ws2_32.lib")
+
+
+
+
 #define MAX_LOADSTRING 100
 
 #define WINDOW_X_SIZE 340
@@ -81,6 +89,7 @@ int desktop_width = 0;
 int desktop_height = 0;
 
 int selected_club = 0;
+int selected_club_value = 0;
 
 double backswingstepsize = 7;
 double backswingsteps = 45;
@@ -100,6 +109,9 @@ int face_contact = 0;
 FILE* fp;
 bool logging = FALSE; //write raw shot data to data_log.txt
 
+bool hostmode = FALSE;
+bool clientmode = FALSE;
+
 ////////////////// USB CODE /////////////////////////////
 
 #define SHOTSLEEPTIME 1000
@@ -112,16 +124,64 @@ static bool keep_polling = TRUE;
 static bool on_top = FALSE;
 static bool opti_connected = FALSE;
 static bool lefty = FALSE;
+static bool club_lockstep = FALSE;
 
-enum golf_club {Driver, W3, W5, HY, I3, I4, I5, I6, I7, I8, I9, PW, GW, SW, Putter};
+enum golf_club {Driver, W2, W3, W4, W5, HY2, HY3, HY4, HY5, I2, I3, I4, I5, I6, I7, I8, I9, PW, GW, SW, LW, Putter};
 
 struct club {
+    TCHAR name[16];
     double club_mass;
     double club_loft;
     double launch_angle;
     double club_speed;
     double smash_factor;
 };
+
+struct Node
+{
+    int club;
+    struct Node* next; // Pointer to next node
+    struct Node* prev; // Pointer to previous node
+};
+
+struct Node* clubs = NULL;
+struct Node* current_selected_club = NULL;
+int num_clubs = -1;
+
+void insertNode(struct Node** start, int value)
+{
+    // If the list is empty, create a single node
+    // circular and doubly list
+    if (*start == NULL)
+    {
+        struct Node* new_node = new Node;
+        new_node->club = value;
+        new_node->next = new_node->prev = new_node;
+        *start = new_node;
+        return;
+    }
+
+    // If list is not empty
+
+    /* Find last node */
+    Node* last = (*start)->prev;
+
+    // Create Node dynamically
+    struct Node* new_node = new Node;
+    new_node->club = value;
+
+    // Start is going to be next of new_node
+    new_node->next = *start;
+
+    // Make new node previous of start
+    (*start)->prev = new_node;
+
+    // Make last previous of new node
+    new_node->prev = last;
+
+    // Make new node next of old last
+    last->next = new_node;
+}
 
 // Future versions of libusb will use usb_interface instead of interface
 // in libusb_config_descriptor => catter for that
@@ -276,34 +336,87 @@ club getClubData(int club_num) {
 
     switch (club_num) {
     case Driver:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"Driver");
         current_club.club_mass = 180;
         current_club.club_loft = 10;
         current_club.launch_angle = 10.9;
         current_club.club_speed = 113;
         current_club.smash_factor = 1.48;
         break;
+    case W2:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"2 Wood");
+        current_club.club_mass = 190;
+        current_club.club_loft = 16.5;
+        current_club.launch_angle = 9.2;
+        current_club.club_speed = 110;
+        current_club.smash_factor = 1.48;
+        break;
     case W3:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"3 Wood");
         current_club.club_mass = 190;
         current_club.club_loft = 16.5;
         current_club.launch_angle = 9.2;
         current_club.club_speed = 107;
         current_club.smash_factor = 1.48;
         break;
+    case W4:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"4 Wood");
+        current_club.club_mass = 190;
+        current_club.club_loft = 16.5;
+        current_club.launch_angle = 9.2;
+        current_club.club_speed = 105;
+        current_club.smash_factor = 1.48;
+        break;
     case W5:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"5 Wood");
         current_club.club_mass = 200;
         current_club.club_loft = 21;
         current_club.launch_angle = 9.4;
         current_club.club_speed = 103;
         current_club.smash_factor = 1.47;
         break;
-    case HY:
+    case HY2:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"2 Hybrid");
+        current_club.club_mass = 195;
+        current_club.club_loft = 19;
+        current_club.launch_angle = 10.2;
+        current_club.club_speed = 106;
+        current_club.smash_factor = 1.46;
+        break;
+    case HY3:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"3 Hybrid");
+        current_club.club_mass = 195;
+        current_club.club_loft = 19;
+        current_club.launch_angle = 10.2;
+        current_club.club_speed = 104;
+        current_club.smash_factor = 1.46;
+        break;
+    case HY4:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"4 Hybrid");
+        current_club.club_mass = 195;
+        current_club.club_loft = 19;
+        current_club.launch_angle = 10.2;
+        current_club.club_speed = 102;
+        current_club.smash_factor = 1.46;
+        break;
+    case HY5:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"5 Hybrid");
         current_club.club_mass = 195;
         current_club.club_loft = 19;
         current_club.launch_angle = 10.2;
         current_club.club_speed = 100;
         current_club.smash_factor = 1.46;
         break;
+    case I2:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"2 Iron");
+        current_club.club_mass = 230;
+        current_club.club_loft = 19;
+        current_club.launch_angle = 10.4;
+        current_club.club_speed = 100;
+        current_club.smash_factor = 1.45;
+        break;
     case I3:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"3 Iron");
         current_club.club_mass = 230;
         current_club.club_loft = 19;
         current_club.launch_angle = 10.4;
@@ -311,6 +424,7 @@ club getClubData(int club_num) {
         current_club.smash_factor = 1.45;
         break;
     case I4:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"4 Iron");
         current_club.club_mass = 237;
         current_club.club_loft = 21;
         current_club.launch_angle = 11.0;
@@ -318,6 +432,7 @@ club getClubData(int club_num) {
         current_club.smash_factor = 1.43;
         break;
     case I5:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"5 Iron");
         current_club.club_mass = 244;
         current_club.club_loft = 23.5;
         current_club.launch_angle = 12.1;
@@ -325,6 +440,7 @@ club getClubData(int club_num) {
         current_club.smash_factor = 1.41;
         break;
     case I6:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"6 Iron");
         current_club.club_mass = 251;
         current_club.club_loft = 26.5;
         current_club.launch_angle = 14.1;
@@ -332,6 +448,7 @@ club getClubData(int club_num) {
         current_club.smash_factor = 1.38;
         break;
     case I7:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"7 Iron");
         current_club.club_mass = 258;
         current_club.club_loft = 30.5;
         current_club.launch_angle = 16.3;
@@ -339,6 +456,7 @@ club getClubData(int club_num) {
         current_club.smash_factor = 1.33;
         break;
     case I8:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"8 Iron");
         current_club.club_mass = 265;
         current_club.club_loft = 34.5;
         current_club.launch_angle = 18.1;
@@ -346,6 +464,7 @@ club getClubData(int club_num) {
         current_club.smash_factor = 1.32;
         break;
     case I9:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"9 Iron");
         current_club.club_mass = 270;
         current_club.club_loft = 38.5;
         current_club.launch_angle = 20.4;
@@ -353,6 +472,7 @@ club getClubData(int club_num) {
         current_club.smash_factor = 1.28;
         break;
     case PW:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"Pitching Wedge");
         current_club.club_mass = 300;
         current_club.club_loft = 43;
         current_club.launch_angle = 24.2;
@@ -360,6 +480,7 @@ club getClubData(int club_num) {
         current_club.smash_factor = 1.23;
         break;
     case GW:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"Gap Wedge");
         current_club.club_mass = 300;
         current_club.club_loft = 48;
         current_club.launch_angle = 26;
@@ -367,13 +488,23 @@ club getClubData(int club_num) {
         current_club.smash_factor = 1.21;
         break;
     case SW:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"Sand Wedge");
         current_club.club_mass = 300;
         current_club.club_loft = 54;
         current_club.launch_angle = 30;
         current_club.club_speed = 79;
         current_club.smash_factor = 1.19;
         break;
+    case LW:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"Lob Wedge");
+        current_club.club_mass = 300;
+        current_club.club_loft = 54;
+        current_club.launch_angle = 30;
+        current_club.club_speed = 77;
+        current_club.smash_factor = 1.19;
+        break;
     case Putter:
+        wcscpy_s((wchar_t*)current_club.name, 16, L"Putter");
         current_club.club_mass = 140;
         current_club.club_loft = 0;
         current_club.launch_angle = 0;
@@ -673,8 +804,8 @@ void processShotData(uint8_t* data, int data_size) {
     }
     SetWindowText(faceContactValue, facecontact.str().c_str());
 
-    //wss << selected_club << "\n";
-    club current_club = getClubData(selected_club);
+    //wss << selected_club_value << "\n";
+    club current_club = getClubData(selected_club_value);
 
     if (max_trigger == 0) current_club.smash_factor = 0.5;
     else if (max_trigger == 1) current_club.smash_factor = 0.94;
@@ -686,7 +817,7 @@ void processShotData(uint8_t* data, int data_size) {
     else if (min_trigger == 4) current_club.smash_factor = 0.98;
 
     //Generate Parameters for shot
-    if (selected_club == Putter) {
+    if (selected_club_value == Putter) {
         backswingstepsize = 7;
         forwardswingstepsize = 25;
         if (swing_speed > 5.5) midswingdelay = 100 + int(1500 * (swing_speed / current_club.club_speed));
@@ -694,28 +825,39 @@ void processShotData(uint8_t* data, int data_size) {
     }
     else
     {
+        if (swing_speed > current_club.club_speed) swing_speed = current_club.club_speed; //max out swing speed so you don't delay too long and get a worse shot
+
         backswingstepsize = 7.0 * current_club.smash_factor;
         forwardswingstepsize = 25.0 * current_club.smash_factor; // 15/50 goes right, 150/7 goes left, no control beyond default
 
-        if (selected_club > I9) { // Wedges
+        if (selected_club_value > I9) { // Wedges
             midswingdelay = 100 + int(500.0 * (swing_speed / current_club.club_speed));
         }
-        else if (selected_club > W5) { // Hybrid and Irons
+        else if (selected_club_value > W5) { // Hybrid and Irons
             midswingdelay = 50 + int(575.0 * (swing_speed / current_club.club_speed));
         }
         else { // Driver and Woods
             midswingdelay = 100 + int(525.0 * (swing_speed / current_club.club_speed));
         }
     }
-    slope = path * .08333333; //affects ball trajectory (point left/right for shot), unfortunately Opti has rough granulatiry
+    ///////// OLD FLIGHT LAWS /////////////
+    //slope = path * .08333333; //affects ball trajectory (point left/right for shot), unfortunately Opti has rough granulatiry
+    //
+    //double off_angle = (atan(slope) * -180 / PI) - average;
+    //
+    //slope += tan(off_angle* PI / 180) / 5; //ball launch adjustment based on how open/closed the club is relative to the path
+    //slope *= 2.5; //scaling as TGC has a "deadzone"
+    //
+    //sideaccel = off_angle; //only control on swing is how fast the club goes forward
+    ////////////////////////////////////////
 
-    double off_angle = (atan(slope) * -180 / PI) - average;
+    ///////// "NEW" FLIGHT LAWS ////////////
+    slope = tan(average * PI / -180) * 5.0; //path of ball is affected by how open/closed the club is
 
-    slope += tan(off_angle* PI / 180) / 5; //ball launch adjustment based on how open/closed the club is relative to the path
-    slope *= 2.5; //scaling as TGC has a "deadzone"
+    sideaccel = (slope - (path * .08333333)) * 10.0; //ball curve is affected by club path relative to face angle
+    ////////////////////////////////////////
 
-    sideaccel = off_angle; //only control on swing is how fast the club goes forward
-    sidescale = 0;         //can control by holding shift and pressing left/right
+    sidescale = 0;         //Aiming left/right, should be done manually by user
     
     RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
 }
@@ -838,7 +980,7 @@ void takeShot() {
         Sleep(100);
         mouse_event(MOUSEEVENTF_LEFTUP, cursorX, cursorY, 0, 0);
         Sleep(100);
-        if(selected_club != Putter) setCurve();
+        if(selected_club_value != Putter) setCurve();
         mouse_event(MOUSEEVENTF_LEFTDOWN, cursorX, cursorY, 0, 0); //click for start of shot
     }
     for (int i = 0; i < backswingsteps; i++) {
@@ -954,7 +1096,7 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
 
                         SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
                         Sleep(10);
-                        if (agregate == 0xFF) { //full swipe over sensor, change shot shape
+                        if ((agregate & 0xC3) == 0) { //middle of sensor, change shot shape
                             inputs[0].type = INPUT_KEYBOARD; //tap C to change shot
                             inputs[0].ki.wVk = 0x43;
                             inputs[0].ki.dwFlags = 0;
@@ -967,12 +1109,52 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                             Sleep(10);
                         }
                         else if (increment) { //also press "Z"
-                            if (selected_club > Driver) selected_club--;
-                            else selected_club = Putter;
+                            if (selected_club > 0) {
+                                current_selected_club = current_selected_club->prev;
+                                selected_club_value = current_selected_club->club;
+                                selected_club--;
+                            }
+                            else {
+                                current_selected_club = clubs->prev;
+                                selected_club_value = current_selected_club->club;
+                                selected_club = num_clubs;
+                            }
+                            if (club_lockstep) {
+                                inputs[0].type = INPUT_KEYBOARD; //tap X to change club
+                                inputs[0].ki.wVk = 0x58;
+                                inputs[0].ki.dwFlags = 0;
+
+                                inputs[1].type = INPUT_KEYBOARD;
+                                inputs[1].ki.wVk = 0x58;
+                                inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+                                SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+                                Sleep(10);
+                            }
                         }
                         else { //also press "X"
-                            if (selected_club < Putter) selected_club++;
-                            else selected_club = Driver;
+                            if (selected_club < num_clubs) {
+                                current_selected_club = current_selected_club->next;
+                                selected_club_value = current_selected_club->club;
+                                selected_club++;
+                            }
+                            else {
+                                current_selected_club = clubs;
+                                selected_club_value = current_selected_club->club;
+                                selected_club = 0;
+                            }
+                            if (club_lockstep) {
+                                inputs[0].type = INPUT_KEYBOARD; //tap Z to change club
+                                inputs[0].ki.wVk = 0x5A;
+                                inputs[0].ki.dwFlags = 0;
+
+                                inputs[1].type = INPUT_KEYBOARD;
+                                inputs[1].ki.wVk = 0x5A;
+                                inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+                                SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+                                Sleep(10);
+                            }
                         }
                         SendMessage(clubSelect, CB_SETCURSEL, (WPARAM)selected_club, (LPARAM)0);
                         Sleep(250);
@@ -988,6 +1170,22 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
         }
         if(on_top) SetWindowPos(mainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
+}
+
+int network_stack() {
+
+    while (keep_polling) {
+        if (hostmode) {
+
+        }
+        else if (clientmode) {
+
+        }
+        else {
+            Sleep(1000);
+        }
+    }
+    return 0;
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -1223,20 +1421,20 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     clubSelect = CreateWindowW(TEXT("COMBOBOX"), TEXT("Reswing"), WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_DROPDOWN | CBS_HASSTRINGS | WS_VSCROLL, 10, y_offset, 100, 200, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
     y_offset += 30;
 
-    TCHAR Clubs[15][16] =
+    TCHAR clublist[14][16] =
     {
-        TEXT("Driver"), TEXT("3 Wood"), TEXT("5 Wood"), TEXT("Hybrid"),
-        TEXT("3 Iron"), TEXT("4 Iron"), TEXT("5 Iron"), TEXT("6 Iron"), TEXT("7 Iron"), TEXT("8 Iron"), TEXT("9 Iron"),
-        TEXT("Pitching Wedge"), TEXT("Gap Wedge"), TEXT("Sand Wedge"), TEXT("Putter")
+        TEXT("Driver"), TEXT("3 Wood"), TEXT("5 Wood"), TEXT("5 Hybrid"),
+        TEXT("5 Iron"), TEXT("6 Iron"), TEXT("7 Iron"), TEXT("8 Iron"), TEXT("9 Iron"),
+        TEXT("Pitching Wedge"), TEXT("Gap Wedge"), TEXT("Sand Wedge"), TEXT("Lob Wedge"), TEXT("Putter")
     };
 
     TCHAR A[16];
     int  k = 0;
 
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 15; k += 1)
+    for (k = 0; k < 14; k += 1)
     {
-        wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)Clubs[k]);
+        wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)clublist[k]);
 
         // Add string to combobox.
         SendMessage(clubSelect, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
@@ -1293,7 +1491,139 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
                 menuItem.fState = MFS_CHECKED;
                 SetMenuItemInfo(hmenu, ID_FILE_LEFTHANDMODE, FALSE, &menuItem);
             }
+            else if (!(name.compare("Lockstep") || value.compare("True"))) {
+                club_lockstep = TRUE;
+                HMENU hmenu = GetMenu(hWnd);
+                MENUITEMINFO menuItem = { 0 };
+                menuItem.cbSize = sizeof(MENUITEMINFO);
+                menuItem.fMask = MIIM_STATE;
+                GetMenuItemInfo(hmenu, ID_OPTIONS_LOCKSTEPMODE, FALSE, &menuItem);
+                menuItem.fState = MFS_CHECKED;
+                SetMenuItemInfo(hmenu, ID_OPTIONS_LOCKSTEPMODE, FALSE, &menuItem);
+            }
+            else if (!(name.compare("Driver") || value.compare("True"))) {
+                insertNode(&clubs, Driver);
+            }
+            else if (!(name.compare("2Wood") || value.compare("True"))) {
+                insertNode(&clubs, W2);
+            }
+            else if (!(name.compare("3Wood") || value.compare("True"))) {
+                insertNode(&clubs, W3);
+            }
+            else if (!(name.compare("4Wood") || value.compare("True"))) {
+                insertNode(&clubs, W4);
+            }
+            else if (!(name.compare("5Wood") || value.compare("True"))) {
+                insertNode(&clubs, W5);
+            }
+            else if (!(name.compare("2Hybrid") || value.compare("True"))) {
+                insertNode(&clubs, HY2);
+            }
+            else if (!(name.compare("3Hybrid") || value.compare("True"))) {
+                insertNode(&clubs, HY3);
+            }
+            else if (!(name.compare("4Hybrid") || value.compare("True"))) {
+                insertNode(&clubs, HY4);
+            }
+            else if (!(name.compare("5Hybrid") || value.compare("True"))) {
+                insertNode(&clubs, HY5);
+            }
+            else if (!(name.compare("2Iron") || value.compare("True"))) {
+                insertNode(&clubs, I2);
+            }
+            else if (!(name.compare("3Iron") || value.compare("True"))) {
+                insertNode(&clubs, I3);
+            }
+            else if (!(name.compare("4Iron") || value.compare("True"))) {
+                insertNode(&clubs, I4);
+            }
+            else if (!(name.compare("5Iron") || value.compare("True"))) {
+                insertNode(&clubs, I5);
+            }
+            else if (!(name.compare("6Iron") || value.compare("True"))) {
+                insertNode(&clubs, I6);
+            }
+            else if (!(name.compare("7Iron") || value.compare("True"))) {
+                insertNode(&clubs, I7);
+            }
+            else if (!(name.compare("8Iron") || value.compare("True"))) {
+                insertNode(&clubs, I8);
+            }
+            else if (!(name.compare("9Iron") || value.compare("True"))) {
+                insertNode(&clubs, I9);
+            }
+            else if (!(name.compare("Pitch") || value.compare("True"))) {
+                insertNode(&clubs, PW);
+            }
+            else if (!(name.compare("Gap") || value.compare("True"))) {
+                insertNode(&clubs, GW);
+            }
+            else if (!(name.compare("Sand") || value.compare("True"))) {
+                insertNode(&clubs, SW);
+            }
+            else if (!(name.compare("Lob") || value.compare("True"))) {
+                insertNode(&clubs, LW);
+            }
+            else if (!(name.compare("Putter") || value.compare("True"))) {
+                insertNode(&clubs, Putter);
+            }
         }
+
+        current_selected_club = clubs;
+
+        SendMessage(clubSelect, CB_RESETCONTENT, 0, 0);
+
+        TCHAR A[16];
+        int  k = 0;
+
+        Node* currentclub = clubs;
+        club clubToAdd = getClubData(currentclub->club);
+        selected_club_value = currentclub->club;
+
+        memset(&A, 0, sizeof(A));
+        wcscpy_s(A, sizeof(A) / sizeof(TCHAR), clubToAdd.name);
+
+        // Add string to combobox.
+        SendMessage(clubSelect, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+        num_clubs++;
+
+        currentclub = currentclub->next;
+
+        while(currentclub->club != clubs->club)
+        {
+            clubToAdd = getClubData(currentclub->club);
+
+            wcscpy_s(A, sizeof(A) / sizeof(TCHAR), clubToAdd.name);
+
+            // Add string to combobox.
+            SendMessage(clubSelect, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+            num_clubs++;
+
+            currentclub = currentclub->next;
+        }
+
+        // Send the CB_SETCURSEL message to display an initial item 
+        //  in the selection field  
+        SendMessage(clubSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+
+    }
+    else {
+        insertNode(&clubs, Driver);
+        insertNode(&clubs, W3);
+        insertNode(&clubs, W5);
+        insertNode(&clubs, HY5);
+        insertNode(&clubs, I5);
+        insertNode(&clubs, I6);
+        insertNode(&clubs, I7);
+        insertNode(&clubs, I8);
+        insertNode(&clubs, I9);
+        insertNode(&clubs, PW);
+        insertNode(&clubs, GW);
+        insertNode(&clubs, SW);
+        insertNode(&clubs, LW);
+        insertNode(&clubs, Putter);
+        num_clubs = 13;
+        current_selected_club = clubs;
     }
 
     return TRUE;
@@ -1405,6 +1735,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (HIWORD(wParam) == CBN_SELCHANGE)
         {
             selected_club = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+            current_selected_club = clubs;
+            for (int i = 0; i < selected_club; i++) {
+                current_selected_club = current_selected_club->next;
+            }
+            selected_club_value = current_selected_club->club;
             TCHAR  ListItem[256];
             (TCHAR)SendMessage((HWND)lParam, (UINT)CB_GETLBTEXT, (WPARAM)selected_club, (LPARAM)ListItem);
         }
@@ -1572,6 +1907,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SelectObject(sourceHDC, hbmOldSource);
 
             break;
+        case ID_OPTIONS_LOCKSTEPMODE:
+            club_lockstep = !club_lockstep;
+
+            GetMenuItemInfo(hmenu, ID_OPTIONS_LOCKSTEPMODE, FALSE, &menuItem);
+
+            if (menuItem.fState == MFS_CHECKED) {
+                // Checked, uncheck it
+                menuItem.fState = MFS_UNCHECKED;
+            }
+            else {
+                // Unchecked, check it
+                menuItem.fState = MFS_CHECKED;
+            }
+            SetMenuItemInfo(hmenu, ID_OPTIONS_LOCKSTEPMODE, FALSE, &menuItem);
+
+            break;
         case ID_FILE_SAVECONFIG:
             cfgfile.open("config.ini");
             //take shot
@@ -1586,7 +1937,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             //lefty
             if (lefty) cfgfile << "Lefty=True\n";
             else cfgfile << "Lefty=False\n";
+            //lockstep
+            if (club_lockstep) cfgfile << "Lockstep=True\n";
+            else cfgfile << "Lockstep=False\n";
             //clubs
+            cfgfile << "Driver=True\n";
+            cfgfile << "2Wood=False\n";
+            cfgfile << "3Wood=True\n";
+            cfgfile << "4Wood=False\n";
+            cfgfile << "5Wood=True\n";
+            cfgfile << "2Hybrid=False\n";
+            cfgfile << "3Hybrid=False\n";
+            cfgfile << "4Hybrid=False\n";
+            cfgfile << "5Hybrid=True\n";
+            cfgfile << "2Iron=False\n";
+            cfgfile << "3Iron=False\n";
+            cfgfile << "4Iron=False\n";
+            cfgfile << "5Iron=True\n";
+            cfgfile << "6Iron=True\n";
+            cfgfile << "7Iron=True\n";
+            cfgfile << "8Iron=True\n";
+            cfgfile << "9Iron=True\n";
+            cfgfile << "Pitch=True\n";
+            cfgfile << "Gap=True\n";
+            cfgfile << "Sand=True\n";
+            cfgfile << "Lob=True\n";
+            cfgfile << "Putter=True\n";
             cfgfile.close();
             break;
         case IDM_EXIT:
@@ -1629,8 +2005,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         //Draw Club
         HBITMAP club_image = NULL;
-        if (selected_club < I3) club_image = driver_bmap;
-        else if (selected_club == Putter) club_image = putter_bmap;
+        if (selected_club_value < I2) club_image = driver_bmap;
+        else if (selected_club_value == Putter) club_image = putter_bmap;
         else club_image = iron_bmap;
 
         if (lefty) swing_angle += 180;
