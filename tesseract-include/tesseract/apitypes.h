@@ -1,3 +1,33 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:844d358b33a5c10983389182854457f4f6a7874de89f734bde6a4263934d5d54
-size 1356
+///////////////////////////////////////////////////////////////////////
+// File:        apitypes.h
+// Description: Types used in both the API and internally
+// Author:      Ray Smith
+// Created:     Wed Mar 03 09:22:53 PST 2010
+//
+// (C) Copyright 2010, Google Inc.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+///////////////////////////////////////////////////////////////////////
+
+#ifndef TESSERACT_API_APITYPES_H_
+#define TESSERACT_API_APITYPES_H_
+
+#include "publictypes.h"
+
+// The types used by the API and Page/ResultIterator can be found in:
+//   ccstruct/publictypes.h
+//   ccmain/resultiterator.h
+//   ccmain/pageiterator.h
+// API interfaces and API users should be sure to include this file, rather
+// than the lower-level one, and lower-level code should be sure to include
+// only the lower-level file.
+
+#endif  // TESSERACT_API_APITYPES_H_
