@@ -51,3 +51,9 @@
 README.md !text !filter !merge !diff
 Replishot_image.PNG !text !filter !merge !diff
 TGC_Shot_Settings.PNG !text !filter !merge !diff
+RepliShot.sln !text !filter !merge !diff
+.gitignore !text !filter !merge !diff
+Replishot/*.cpp !text !filter !merge !diff
+Replishot/*.h !text !filter !merge !diff
+Replishot/*.bin !text !filter !merge !diff
+Replishot/* !text !filter !merge !diff
