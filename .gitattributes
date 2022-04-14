@@ -63,8 +63,8 @@ Replishot/hid.c !text !filter !merge !diff
 Replishot/hidapi.h !text !filter !merge !diff
 Replishot/hidapi.lib !text !filter !merge !diff
 Replishot/iron.bmp !text !filter !merge !diff
-Replishot/libusb-1.0.lib !text !filter !merge !diff
 Replishot/libusb.h !text !filter !merge !diff
+Replishot/libusb-1.0.lib !text !filter !merge !diff
 Replishot/putter.bmp !text !filter !merge !diff
 Replishot/RepliShot.cpp !text !filter !merge !diff
 Replishot/RepliShot.h !text !filter !merge !diff

@@ -1,3 +1,15 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:325bbf4fbddd2daaf5110d091481e76c7e5ec6e32645b08797611f0e0a3d7896
-size 380
+// header.h : include file for standard system include files,
+// or project specific include files
+//
+
+#pragma once
+
+#include "targetver.h"
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+// Windows Header Files
+#include <windows.h>
+// C RunTime Header Files
+#include <stdlib.h>
+#include <malloc.h>
+#include <memory.h>
+#include <tchar.h>
