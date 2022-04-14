@@ -1224,17 +1224,19 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                         INPUT inputs[2] = {};
                         ZeroMemory(inputs, sizeof(inputs));
 
-                        inputs[0].type = INPUT_KEYBOARD; //tap W, sometimes the first keyboard input is missed, so this one is throw away
-                        inputs[0].ki.wVk = 0x57;
-                        inputs[0].ki.dwFlags = 0;
+                        if (clickMouse) {
+                            inputs[0].type = INPUT_KEYBOARD; //tap W, sometimes the first keyboard input is missed, so this one is throw away
+                            inputs[0].ki.wVk = 0x57;
+                            inputs[0].ki.dwFlags = 0;
 
-                        inputs[1].type = INPUT_KEYBOARD;
-                        inputs[1].ki.wVk = 0x57;
-                        inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+                            inputs[1].type = INPUT_KEYBOARD;
+                            inputs[1].ki.wVk = 0x57;
+                            inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+                        }
 
                         SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
                         Sleep(10);
-                        if ((agregate & 0xC3) == 0) { //middle of sensor, change shot shape
+                        if ((agregate & 0xC3) == 0 && clickMouse) { //middle of sensor, change shot shape
                             inputs[0].type = INPUT_KEYBOARD; //tap C to change shot
                             inputs[0].ki.wVk = 0x43;
                             inputs[0].ki.dwFlags = 0;
@@ -1257,7 +1259,7 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                                 selected_club_value = current_selected_club->club;
                                 selected_club = num_clubs;
                             }
-                            if (club_lockstep) {
+                            if (club_lockstep && clickMouse) {
                                 inputs[0].type = INPUT_KEYBOARD; //tap X to change club
                                 inputs[0].ki.wVk = 0x58;
                                 inputs[0].ki.dwFlags = 0;
@@ -1281,7 +1283,7 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                                 selected_club_value = current_selected_club->club;
                                 selected_club = 0;
                             }
-                            if (club_lockstep) {
+                            if (club_lockstep && clickMouse) {
                                 inputs[0].type = INPUT_KEYBOARD; //tap Z to change club
                                 inputs[0].ki.wVk = 0x5A;
                                 inputs[0].ki.dwFlags = 0;
@@ -1295,6 +1297,7 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                             }
                         }
                         SendMessage(clubSelect, CB_SETCURSEL, (WPARAM)selected_club, (LPARAM)0);
+
                         Sleep(250);
                         flush_buffer(dev, data, prev_data, data_size);
                     }
@@ -1348,6 +1351,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+    std::vector<std::thread> threads;
+
     RECT desktop;
     // Get a handle to the desktop window
     const HWND hDesktop = GetDesktopWindow();
@@ -1363,12 +1368,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     int myResourceSize = ::SizeofResource(NULL, src);
     HGLOBAL myResourceData = LoadResource(NULL, src);
+    void* pMyBinaryData = NULL;
 
-    void* pMyBinaryData = LockResource(myResourceData);
-
+    if(myResourceData) pMyBinaryData = LockResource(myResourceData);
+    
     tesseract_ptr->Init((char*)pMyBinaryData, myResourceSize, "eng", tesseract::OEM_DEFAULT, NULL, NULL, NULL, NULL, TRUE, NULL);
 
-    std::thread screenReading(clubReading);
+    threads.push_back(std::thread(clubReading));
     
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -1393,9 +1399,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     int size = 60;
     uint8_t* report_buffer;
     report_buffer = (uint8_t*)calloc(size, 1);
-    hid_device* dev;
+    hid_device* dev = NULL;
+    int file_status = 0;
 
-    fopen_s(&fp, "data_log.txt", "a+");
+    file_status = fopen_s(&fp, "data_log.txt", "a+");
 
     ////////// LIBUSB SETUP //////////
     // Optishot VID:PID
@@ -1414,7 +1421,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         if(handle == NULL) retry = MessageBox(GetActiveWindow(), L"Cannot Connect to Optishot, ensure the USB cable is plugged in and click Try Again.\n\n Press Cancel to close the application.\n\nPress continue to run without Optishot.", NULL, MB_CANCELTRYCONTINUE);
     }
     if (handle != NULL) {
-        ////////// END LIBUSB SETUP ////////
 
         ///////// OPTI-CONTROL //////////////
         r = opti_init(handle, endpoint, report_buffer, size);
@@ -1425,10 +1431,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
         hid_set_nonblocking(dev, 1);
 
-        std::thread polling(optiPolling, dev, handle, endpoint, report_buffer);
+        threads.push_back(std::thread(optiPolling, dev, handle, endpoint, report_buffer));
 
-        ////////////////////////////////////////////////////////// END USB CODE /////////
-
+    }
+    if (handle != NULL || retry == 11) {
         // Main message loop:
         while (GetMessage(&msg, nullptr, 0, 0))
         {
@@ -1439,12 +1445,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
+    }
 
-        /////////////////////////////////////////////// USB CODE ////////////
+    keep_polling = FALSE;
+    for (auto& th : threads) th.join();
 
-        keep_polling = false;
-        polling.join();
-
+    if (handle != NULL) {
         r = opti_shutdown(handle, endpoint, report_buffer, size);
         if (r != 0) return r;
         //////// END OPTI-CONTROL ///////////
@@ -1452,25 +1458,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         hid_close(dev);
         libusb_close(handle);
     }
-    else if (retry == 11) {
-        // Main message loop:
-        while (GetMessage(&msg, nullptr, 0, 0))
-        {
-
-            if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-            {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-            }
-        }
-    }
-    keep_polling = FALSE;
-    screenReading.join();
 
     libusb_exit(NULL);
-    fclose(fp);
+    if(fp) fclose(fp);
 
-    ////////////////////////////////////////////////////////// END USB CODE /////////
     if(handle != NULL) return (int)msg.wParam;
     return 0;
 }
