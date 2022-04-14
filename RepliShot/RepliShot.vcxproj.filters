@@ -79,7 +79,6 @@
     </Library>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\tessdata\eng.traineddata" />
     <None Include="binary1.bin">
       <Filter>Resource Files</Filter>
     </None>
