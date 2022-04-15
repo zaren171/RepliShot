@@ -130,6 +130,8 @@ static bool on_top = FALSE;
 static bool opti_connected = FALSE;
 static bool lefty = FALSE;
 static bool club_lockstep = FALSE;
+static bool driving_range = FALSE;
+static bool front_sensor_features = FALSE;
 
 enum golf_club {Driver, W2, W3, W4, W5, HY2, HY3, HY4, HY5, I2, I3, I4, I5, I6, I7, I8, I9, PW, GW, SW, LW, Putter};
 
@@ -1035,41 +1037,43 @@ void setCurve()
     INPUT inputs[2] = {};
     ZeroMemory(inputs, sizeof(inputs));
 
-    inputs[0].type = INPUT_KEYBOARD; //tap W, sometimes the first keyboard input is missed, so this one is throw away
-    inputs[0].ki.wVk = 0x57;
-    inputs[0].ki.dwFlags = 0;
+    if (driving_range) {
+        inputs[0].type = INPUT_KEYBOARD; //tap W, sometimes the first keyboard input is missed, so this one is throw away
+        inputs[0].ki.wVk = 0x57;
+        inputs[0].ki.dwFlags = 0;
 
-    inputs[1].type = INPUT_KEYBOARD;
-    inputs[1].ki.wVk = 0x57;
-    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+        inputs[1].type = INPUT_KEYBOARD;
+        inputs[1].ki.wVk = 0x57;
+        inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
-    SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
-    Sleep(10);
+        SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+        Sleep(10);
 
-    inputs[0].type = INPUT_KEYBOARD; //tap Z to change club
-    inputs[0].ki.wVk = 0x5A;
-    inputs[0].ki.dwFlags = 0;
+        inputs[0].type = INPUT_KEYBOARD; //tap Z to change club
+        inputs[0].ki.wVk = 0x5A;
+        inputs[0].ki.dwFlags = 0;
 
-    inputs[1].type = INPUT_KEYBOARD;
-    inputs[1].ki.wVk = 0x5A;
-    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+        inputs[1].type = INPUT_KEYBOARD;
+        inputs[1].ki.wVk = 0x5A;
+        inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
-    SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
-    Sleep(10);
+        SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+        Sleep(10);
 
-    inputs[0].type = INPUT_KEYBOARD; //tap x to go back to same club
-    inputs[0].ki.wVk = 0x58;         //this resets the shot curve to be straight
-    inputs[0].ki.dwFlags = 0;
+        inputs[0].type = INPUT_KEYBOARD; //tap x to go back to same club
+        inputs[0].ki.wVk = 0x58;         //this resets the shot curve to be straight
+        inputs[0].ki.dwFlags = 0;
 
-    inputs[1].type = INPUT_KEYBOARD;
-    inputs[1].ki.wVk = 0x58;
-    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+        inputs[1].type = INPUT_KEYBOARD;
+        inputs[1].ki.wVk = 0x58;
+        inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
-    SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
-    Sleep(10);
+        SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+        Sleep(10);
+    }
 
     inputs[0].type = INPUT_KEYBOARD;
-    inputs[0].ki.wVk = VK_LSHIFT;
+    inputs[0].ki.wVk = VK_SHIFT;
     inputs[0].ki.dwFlags = 0;
 
     if (sideaccel > 0) {
@@ -1098,7 +1102,7 @@ void setCurve()
     }
 
     inputs[1].type = INPUT_KEYBOARD;
-    inputs[1].ki.wVk = VK_LSHIFT;
+    inputs[1].ki.wVk = VK_SHIFT;
     inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
     SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
@@ -1210,7 +1214,7 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                         opti_green(handle, endpoint, report_buffer, size);
                     }
                     else 
-                    if (front) { //if it's only the front sensor, use it to change the club selection
+                    if (front && front_sensor_features) { //if it's only the front sensor, use it to change the club selection
 
                         bool increment = FALSE;
                         uint8_t agregate = 0x00;
@@ -1658,6 +1662,26 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
                 menuItem.fState = MFS_CHECKED;
                 SetMenuItemInfo(hmenu, ID_OPTIONS_LOCKSTEPMODE, FALSE, &menuItem);
             }
+            else if (!(name.compare("DrivingRange") || value.compare("True"))) {
+                driving_range = TRUE;
+                HMENU hmenu = GetMenu(hWnd);
+                MENUITEMINFO menuItem = { 0 };
+                menuItem.cbSize = sizeof(MENUITEMINFO);
+                menuItem.fMask = MIIM_STATE;
+                GetMenuItemInfo(hmenu, ID_OPTIONS_DRIVINGRANGEMODE, FALSE, &menuItem);
+                menuItem.fState = MFS_CHECKED;
+                SetMenuItemInfo(hmenu, ID_OPTIONS_DRIVINGRANGEMODE, FALSE, &menuItem);
+            }
+            else if (!(name.compare("FrontSensor") || value.compare("True"))) {
+                front_sensor_features = TRUE;
+                HMENU hmenu = GetMenu(hWnd);
+                MENUITEMINFO menuItem = { 0 };
+                menuItem.cbSize = sizeof(MENUITEMINFO);
+                menuItem.fMask = MIIM_STATE;
+                GetMenuItemInfo(hmenu, ID_OPTIONS_FRONTSENSORFEATURES, FALSE, &menuItem);
+                menuItem.fState = MFS_CHECKED;
+                SetMenuItemInfo(hmenu, ID_OPTIONS_FRONTSENSORFEATURES, FALSE, &menuItem);
+            }
             else if (!(name.compare("Driver") || value.compare("True"))) {
                 insertNode(&clubs, Driver);
             }
@@ -2080,6 +2104,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SetMenuItemInfo(hmenu, ID_OPTIONS_LOCKSTEPMODE, FALSE, &menuItem);
 
             break;
+        case ID_OPTIONS_DRIVINGRANGEMODE:
+            driving_range = !driving_range;
+
+            GetMenuItemInfo(hmenu, ID_OPTIONS_DRIVINGRANGEMODE, FALSE, &menuItem);
+
+            if (menuItem.fState == MFS_CHECKED) {
+                // Checked, uncheck it
+                menuItem.fState = MFS_UNCHECKED;
+            }
+            else {
+                // Unchecked, check it
+                menuItem.fState = MFS_CHECKED;
+            }
+            SetMenuItemInfo(hmenu, ID_OPTIONS_DRIVINGRANGEMODE, FALSE, &menuItem);
+
+            break;
+        case ID_OPTIONS_FRONTSENSORFEATURES:
+            front_sensor_features = !front_sensor_features;
+
+            GetMenuItemInfo(hmenu, ID_OPTIONS_FRONTSENSORFEATURES, FALSE, &menuItem);
+
+            if (menuItem.fState == MFS_CHECKED) {
+                // Checked, uncheck it
+                menuItem.fState = MFS_UNCHECKED;
+            }
+            else {
+                // Unchecked, check it
+                menuItem.fState = MFS_CHECKED;
+            }
+            SetMenuItemInfo(hmenu, ID_OPTIONS_FRONTSENSORFEATURES, FALSE, &menuItem);
+
+            break;
         case ID_FILE_SAVECONFIG:
             cfgfile.open("config.ini");
             //take shot
@@ -2097,6 +2153,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             //lockstep
             if (club_lockstep) cfgfile << "Lockstep=True\n";
             else cfgfile << "Lockstep=False\n";
+            //drivingrange
+            if (driving_range) cfgfile << "DrivingRange=True\n";
+            else cfgfile << "DrivingRange=False\n";
+            //frontsensor
+            if (front_sensor_features) cfgfile << "FrontSensor=True\n";
+            else cfgfile << "FrontSensor=False\n";
             //clubs
             cfgfile << "Driver=True\n";
             cfgfile << "2Wood=False\n";
