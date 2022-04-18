@@ -992,7 +992,7 @@ void processShotData(uint8_t* data, int data_size) {
     ////////////////////////////////////////
 
     ///////// "NEW" FLIGHT LAWS ////////////
-    slope = tan(average * PI / -180) * 5.0; //path of ball is affected by how open/closed the club is
+    slope = tan(average * PI / -180) * 4.0; //path of ball is affected by how open/closed the club is
 
     sideaccel = (slope - (path * .08333333)) * 10.0; //ball curve is affected by club path relative to face angle
     ////////////////////////////////////////
