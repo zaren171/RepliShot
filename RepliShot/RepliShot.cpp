@@ -1,6 +1,11 @@
 // Mouse_Controller.cpp : Defines the entry point for the application.
 //
 
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
 #include "framework.h"
 #include "RepliShot.h"
 #include <Windows.h>
@@ -27,11 +32,16 @@
 #include <baseapi.h>
 #include <allheaders.h>
 
-#include <winsock.h>
-
 #include "hidapi.h"
 #include "libusb.h"
 
+#pragma comment(lib,"ws2_32.lib") //Winsock Library
+
+#define DEFAULT_BUFLEN 512
+#define DEFAULT_PORT "24607"
+
+SOCKET ClientSocket = INVALID_SOCKET;
+SOCKET HostSocket = INVALID_SOCKET;
 
 #define MAX_LOADSTRING 100
 
@@ -1213,8 +1223,8 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                         opti_red(handle, endpoint, report_buffer, size);
 
                         if (clientmode && clientConnected) {
-                            //trasnmit data, data_size
-                            Sleep(1);
+                            send(HostSocket, (const char*)data, data_size, 0);
+                            //Sleep(1);
                             //wait for ack
                             //if timeout continue
                         }
@@ -1394,28 +1404,116 @@ void clubReading() {
 }
 
 void network_stack() {
-    while (keep_polling) {
-        if (hostmode) {
-            //Receive data and call these:
-            // 
-            //processShotData(data, data_size);
-            //
-            //takeShot();
-            //
-            //acknowledge
+    WSADATA wsaData;
+    int iResult;
 
+    SOCKET ListenSocket = INVALID_SOCKET;
+
+    struct addrinfo* result = NULL;
+    struct addrinfo* ptr = NULL;
+    struct addrinfo hints;
+
+    int iSendResult;
+    char recvbuf[DEFAULT_BUFLEN];
+    int recvbuflen = DEFAULT_BUFLEN;
+
+    while ((hostmode || clientmode) && keep_polling) {
+        if (hostmode) {
+
+            int iSendResult;
+            char recvbuf[DEFAULT_BUFLEN];
+            int recvbuflen = DEFAULT_BUFLEN;
+
+            // Initialize Winsock
+            WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+            ZeroMemory(&hints, sizeof(hints));
+            hints.ai_family = AF_INET;
+            hints.ai_socktype = SOCK_STREAM;
+            hints.ai_protocol = IPPROTO_TCP;
+            hints.ai_flags = AI_PASSIVE;
+
+            // Resolve the server address and port
+            getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
+
+            // Create a SOCKET for connecting to server
+            ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+
+            // Setup the TCP listening socket
+            bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
+
+            freeaddrinfo(result);
+
+            listen(ListenSocket, SOMAXCONN);
+
+            // Accept a client socket
+            ClientSocket = accept(ListenSocket, NULL, NULL);
+
+            // No longer need server socket
+            closesocket(ListenSocket);
+
+            // Receive until the peer shuts down the connection
+            do {
+
+                iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
+
+                processShotData((uint8_t *)recvbuf, recvbuflen);
+                takeShot();
+
+            } while (iResult > 0 && keep_polling);
+
+            hostmode = FALSE;
         }
         else if (clientmode && !clientConnected) {
-            //setup
+            // Initialize Winsock
+            WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-            //once connected
-            clientConnected = TRUE;
+            ZeroMemory(&hints, sizeof(hints));
+            hints.ai_family = AF_UNSPEC;
+            hints.ai_socktype = SOCK_STREAM;
+            hints.ai_protocol = IPPROTO_TCP;
+
+            // Resolve the server address and port
+            iResult = getaddrinfo("localhost", DEFAULT_PORT, &hints, &result);
+
+            // Attempt to connect to an address until one succeeds
+            for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+
+                // Create a SOCKET for connecting to server
+                HostSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+
+                // Connect to server.
+                iResult = connect(HostSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+                if (iResult == SOCKET_ERROR) {
+                    closesocket(HostSocket);
+                    HostSocket = INVALID_SOCKET;
+                    continue;
+                }
+                break;
+            }
+
+            freeaddrinfo(result);
+
+            if (HostSocket != INVALID_SOCKET) {
+
+                clientConnected = TRUE;
+
+                while (keep_polling && clientmode) {
+                    Sleep(1000);
+                }
+            }
         }
         else {
             Sleep(1000);
         }
     }
-    //close host/client connection
+
+    iResult = shutdown(ClientSocket, SD_SEND);
+    closesocket(ClientSocket);
+    closesocket(HostSocket);
+    WSACleanup();
+
+    RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -1483,6 +1581,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
     }
+
+    shutdown(ClientSocket, SD_SEND);
+    closesocket(ClientSocket);
+    shutdown(HostSocket, SD_SEND);
+    closesocket(HostSocket);
+    WSACleanup();
 
     keep_polling = FALSE;
     for (auto& th : threads) th.join();
@@ -1933,6 +2037,7 @@ bool getMyIP(IPv4& myIP)
         return false;
     }
 
+    
     struct hostent* host = gethostbyname(szBuffer);
     if (host == NULL)
     {
@@ -2223,6 +2328,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 menuItem.fState = MFS_UNCHECKED;
                 SetMenuItemInfo(hmenu, ID_NETWORKMODE_HOSTMODE, FALSE, &menuItem);
             }
+            else if (clientmode) {
+                threads.push_back(std::thread(network_stack));
+            }
+            if (clientmode) {
+
+            }
 
             GetMenuItemInfo(hmenu, ID_NETWORKMODE_CLIENTMODE, FALSE, &menuItem);
 
@@ -2247,6 +2358,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 GetMenuItemInfo(hmenu, ID_NETWORKMODE_CLIENTMODE, FALSE, &menuItem);
                 menuItem.fState = MFS_UNCHECKED;
                 SetMenuItemInfo(hmenu, ID_NETWORKMODE_CLIENTMODE, FALSE, &menuItem);
+            }
+            else if (hostmode) {
+                threads.push_back(std::thread(network_stack));
             }
 
             GetMenuItemInfo(hmenu, ID_NETWORKMODE_HOSTMODE, FALSE, &menuItem);

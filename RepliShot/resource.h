@@ -17,7 +17,6 @@
 #define IDB_IRON_BITMAP                 132
 #define IDB_PUTTER_BITMAP               133
 #define IDR_BINARY1                     138
-#define IDB_BITMAP1                     139
 #define IDB_OPTI                        139
 #define ID_FILE_KEEPONTOP               32771
 #define ID_FILE_LEFTHANDMODE            32772
@@ -36,7 +35,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        140
+#define _APS_NEXT_RESOURCE_VALUE        141
 #define _APS_NEXT_COMMAND_VALUE         32781
 #define _APS_NEXT_CONTROL_VALUE         1000
 #define _APS_NEXT_SYMED_VALUE           110
