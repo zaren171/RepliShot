@@ -170,6 +170,7 @@
     <Image Include="golf_ball.bmp" />
     <Image Include="golf_ball.png" />
     <Image Include="iron.bmp" />
+    <Image Include="opti.bmp" />
     <Image Include="putter.bmp" />
     <Image Include="RepliShot.ico" />
     <Image Include="small.ico" />

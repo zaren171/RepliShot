@@ -69,6 +69,9 @@
     <Image Include="putter.bmp">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="opti.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Library Include="hidapi.lib">

@@ -27,15 +27,10 @@
 #include <baseapi.h>
 #include <allheaders.h>
 
+#include <winsock.h>
+
 #include "hidapi.h"
 #include "libusb.h"
-
-
-//#include <WinSock2.h>
-//// Need to link with Ws2_32.lib
-//#pragma comment (lib, "Ws2_32.lib")
-
-
 
 
 #define MAX_LOADSTRING 100
@@ -87,6 +82,7 @@ HBITMAP golfball_bmap = NULL;
 HBITMAP driver_bmap = NULL;
 HBITMAP iron_bmap = NULL;
 HBITMAP putter_bmap = NULL;
+HBITMAP opti_bmap = NULL;
 
 int desktop_width = 0;
 int desktop_height = 0;
@@ -114,12 +110,19 @@ bool logging = FALSE; //write raw shot data to data_log.txt
 
 bool hostmode = FALSE;
 bool clientmode = FALSE;
+bool clientConnected = FALSE;
+
+bool opticonnected = FALSE;
+uint8_t* report_buffer;
+hid_device* dev = NULL;
+libusb_device_handle* handle = NULL;
+std::vector<std::thread> threads;
 
 std::unique_ptr<tesseract::TessBaseAPI> tesseract_ptr(new tesseract::TessBaseAPI());
 
 ////////////////// USB CODE /////////////////////////////
 
-#define SHOTSLEEPTIME 1000
+#define SHOTSLEEPTIME 2500
 #define SENSORSPACING 185
 #define LEDSPACING 15
 #define PI 3.14159265
@@ -154,6 +157,13 @@ struct Node
 struct Node* clubs = NULL;
 struct Node* current_selected_club = NULL;
 int num_clubs = -1;
+
+struct IPv4
+{
+    unsigned char b1, b2, b3, b4;
+};
+
+struct IPv4 hostIP;
 
 void ReadFromScreen(RECT rc)
 {
@@ -407,9 +417,9 @@ static int opti_init(libusb_device_handle* handle, uint8_t endpoint, uint8_t* re
     int r = 0;
 
     r = usb_init(handle);
-    if (r != 0) {
-        return -1;
-    }
+    //if (r != 0) {
+    //    return -1;
+    //}
 
     //Turns on the sensors
     report_buffer[0] = 0x50;
@@ -1202,9 +1212,17 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
 
                         opti_red(handle, endpoint, report_buffer, size);
 
-                        processShotData(data, data_size);
+                        if (clientmode && clientConnected) {
+                            //trasnmit data, data_size
+                            Sleep(1);
+                            //wait for ack
+                            //if timeout continue
+                        }
+                        else {
+                            processShotData(data, data_size);
 
-                        takeShot();
+                            takeShot();
+                        }
 
                         //TODO: determine sleep time, hopefully just one good delay time will work
                         Sleep(SHOTSLEEPTIME);
@@ -1313,9 +1331,52 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                 }
             }
         }
+        else {
+            if (libusb_open_device_with_vid_pid(NULL, VID, PID) == NULL) {
+                opticonnected = FALSE;
+                RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+                return;
+            }
+        }
         if(on_top) SetWindowPos(mainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
     }
+}
+
+static int opti_connect() {
+    int retry = IDRETRY;
+
+    // Optishot VID:PID
+    VID = 0x0547;
+    PID = 0x3294;
+
+    libusb_init(NULL);
+
+    libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, LIBUSB_LOG_LEVEL_INFO); //LIBUSB_LOG_LEVEL_INFO LIBUSB_LOG_LEVEL_DEBUG
+
+    handle = init_device(VID, PID, NULL); //opening data socket and receiving data, I need to get it.
+
+    while (handle == NULL && retry == IDRETRY) {
+        handle = init_device(VID, PID, NULL); //opening data socket and receiving data, I need to get it.
+        if (handle == NULL) retry = MessageBox(GetActiveWindow(), L"Cannot Connect to Optishot, ensure the USB cable is plugged in and click Retry.\n\n Press Cancel to continue without the Optishot.", NULL, MB_RETRYCANCEL);
+    }
+    if (handle != NULL) {
+        ///////// OPTI-CONTROL //////////////
+        opti_init(handle, 1, report_buffer, 60);
+
+        ////CAPTURE DATA LOOP////////////
+        dev = hid_open(VID, PID, NULL);
+
+        hid_set_nonblocking(dev, 1);
+
+        threads.push_back(std::thread(optiPolling, dev, handle, 1, report_buffer));
+
+        opticonnected = TRUE;
+
+        RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+    }
+
+    return retry;
 }
 
 void clubReading() {
@@ -1333,18 +1394,28 @@ void clubReading() {
 }
 
 void network_stack() {
-
     while (keep_polling) {
         if (hostmode) {
+            //Receive data and call these:
+            // 
+            //processShotData(data, data_size);
+            //
+            //takeShot();
+            //
+            //acknowledge
 
         }
-        else if (clientmode) {
+        else if (clientmode && !clientConnected) {
+            //setup
 
+            //once connected
+            clientConnected = TRUE;
         }
         else {
             Sleep(1000);
         }
     }
+    //close host/client connection
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -1354,8 +1425,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
-
-    std::vector<std::thread> threads;
 
     RECT desktop;
     // Get a handle to the desktop window
@@ -1398,56 +1467,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     /////////////////////////////////////////////// USB CODE ////////////
 
     int r, loop = 0;
-    libusb_device_handle* handle = NULL;
-    uint8_t endpoint = 1;
     int size = 60;
-    uint8_t* report_buffer;
     report_buffer = (uint8_t*)calloc(size, 1);
-    hid_device* dev = NULL;
-    int file_status = 0;
-
-    file_status = fopen_s(&fp, "data_log.txt", "a+");
-
-    ////////// LIBUSB SETUP //////////
-    // Optishot VID:PID
-    VID = 0x0547;
-    PID = 0x3294;
-
-    r = libusb_init(NULL);
-    if (r < 0)
-        return r;
-
-    libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, LIBUSB_LOG_LEVEL_INFO); //LIBUSB_LOG_LEVEL_INFO LIBUSB_LOG_LEVEL_DEBUG
 
     int retry = 10;
-    while (handle == NULL && retry == 10) {
-        handle = init_device(VID, PID, NULL); //opening data socket and receiving data, I need to get it.
-        if(handle == NULL) retry = MessageBox(GetActiveWindow(), L"Cannot Connect to Optishot, ensure the USB cable is plugged in and click Try Again.\n\n Press Cancel to close the application.\n\nPress continue to run without Optishot.", NULL, MB_CANCELTRYCONTINUE);
-    }
-    if (handle != NULL) {
+    retry = opti_connect();
 
-        ///////// OPTI-CONTROL //////////////
-        r = opti_init(handle, endpoint, report_buffer, size);
-        if (r != 0) return r;
+    // Main message loop:
+    while (GetMessage(&msg, nullptr, 0, 0))
+    {
 
-        ////CAPTURE DATA LOOP////////////
-        dev = hid_open(VID, PID, NULL);
-
-        hid_set_nonblocking(dev, 1);
-
-        threads.push_back(std::thread(optiPolling, dev, handle, endpoint, report_buffer));
-
-    }
-    if (handle != NULL || retry == 11) {
-        // Main message loop:
-        while (GetMessage(&msg, nullptr, 0, 0))
+        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
-
-            if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-            {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
         }
     }
 
@@ -1455,7 +1488,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     for (auto& th : threads) th.join();
 
     if (handle != NULL) {
-        r = opti_shutdown(handle, endpoint, report_buffer, size);
+        r = opti_shutdown(handle, 1, report_buffer, size);
         if (r != 0) return r;
         //////// END OPTI-CONTROL ///////////
 
@@ -1880,6 +1913,47 @@ HBITMAP GetRotatedBitmapNT(HDC hdc, HBITMAP hBitmap, double radians, COLORREF cl
     return hbmResult;
 }
 
+bool getMyIP(IPv4& myIP)
+{
+    char szBuffer[1024];
+
+#ifdef WIN32
+    WSADATA wsaData;
+    WORD wVersionRequested = MAKEWORD(2, 0);
+    if (::WSAStartup(wVersionRequested, &wsaData) != 0)
+        return false;
+#endif
+
+
+    if (gethostname(szBuffer, sizeof(szBuffer)) == SOCKET_ERROR)
+    {
+#ifdef WIN32
+        WSACleanup();
+#endif
+        return false;
+    }
+
+    struct hostent* host = gethostbyname(szBuffer);
+    if (host == NULL)
+    {
+#ifdef WIN32
+        WSACleanup();
+#endif
+        return false;
+    }
+
+    //Obtain the computer's IP
+    myIP.b1 = ((struct in_addr*)(host->h_addr))->S_un.S_un_b.s_b1;
+    myIP.b2 = ((struct in_addr*)(host->h_addr))->S_un.S_un_b.s_b2;
+    myIP.b3 = ((struct in_addr*)(host->h_addr))->S_un.S_un_b.s_b3;
+    myIP.b4 = ((struct in_addr*)(host->h_addr))->S_un.S_un_b.s_b4;
+
+#ifdef WIN32
+    WSACleanup();
+#endif
+    return true;
+}
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -2016,6 +2090,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             takeShot();
         }
 
+        //save config variable
         std::ofstream cfgfile;
         
         // Parse the menu selections:
@@ -2136,6 +2211,59 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SetMenuItemInfo(hmenu, ID_OPTIONS_FRONTSENSORFEATURES, FALSE, &menuItem);
 
             break;
+        case ID_FILE_RECONNECTOPTISHOT:
+            opti_connect();
+            break;
+        case ID_NETWORKMODE_CLIENTMODE:
+            clientmode = !clientmode;
+
+            if (hostmode && clientmode) {
+                hostmode = FALSE;
+                GetMenuItemInfo(hmenu, ID_NETWORKMODE_HOSTMODE, FALSE, &menuItem);
+                menuItem.fState = MFS_UNCHECKED;
+                SetMenuItemInfo(hmenu, ID_NETWORKMODE_HOSTMODE, FALSE, &menuItem);
+            }
+
+            GetMenuItemInfo(hmenu, ID_NETWORKMODE_CLIENTMODE, FALSE, &menuItem);
+
+            if (menuItem.fState == MFS_CHECKED) {
+                // Checked, uncheck it
+                menuItem.fState = MFS_UNCHECKED;
+            }
+            else {
+                // Unchecked, check it
+                menuItem.fState = MFS_CHECKED;
+            }
+            SetMenuItemInfo(hmenu, ID_NETWORKMODE_CLIENTMODE, FALSE, &menuItem);
+
+            RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+
+            break;
+        case ID_NETWORKMODE_HOSTMODE:
+            hostmode = !hostmode;
+
+            if (hostmode && clientmode) {
+                clientmode = FALSE;
+                GetMenuItemInfo(hmenu, ID_NETWORKMODE_CLIENTMODE, FALSE, &menuItem);
+                menuItem.fState = MFS_UNCHECKED;
+                SetMenuItemInfo(hmenu, ID_NETWORKMODE_CLIENTMODE, FALSE, &menuItem);
+            }
+
+            GetMenuItemInfo(hmenu, ID_NETWORKMODE_HOSTMODE, FALSE, &menuItem);
+
+            if (menuItem.fState == MFS_CHECKED) {
+                // Checked, uncheck it
+                menuItem.fState = MFS_UNCHECKED;
+            }
+            else {
+                // Unchecked, check it
+                menuItem.fState = MFS_CHECKED;
+            }
+            SetMenuItemInfo(hmenu, ID_NETWORKMODE_HOSTMODE, FALSE, &menuItem);
+
+            RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+
+            break;
         case ID_FILE_SAVECONFIG:
             cfgfile.open("config.ini");
             //take shot
@@ -2197,6 +2325,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         driver_bmap = LoadBitmap((HINSTANCE)GetWindowLong(hWnd, GWL_HINSTANCE), MAKEINTRESOURCE(IDB_DRIVER_BITMAP));
         iron_bmap = LoadBitmap((HINSTANCE)GetWindowLong(hWnd, GWL_HINSTANCE), MAKEINTRESOURCE(IDB_IRON_BITMAP));
         putter_bmap = LoadBitmap((HINSTANCE)GetWindowLong(hWnd, GWL_HINSTANCE), MAKEINTRESOURCE(IDB_PUTTER_BITMAP));
+        opti_bmap = LoadBitmap((HINSTANCE)GetWindowLong(hWnd, GWL_HINSTANCE), MAKEINTRESOURCE(IDB_OPTI));
         break;
     case WM_PAINT:
     {
@@ -2217,7 +2346,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         oldBitmap = SelectObject(hdcMem, golfball_bmap);
 
         GetObject(golfball_bmap, sizeof(bitmap), &bitmap);
-        BitBlt(hdc, left+135, top+50, left+bitmap.bmWidth, top+bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+        BitBlt(hdc, left + 135, top + 50, left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
 
         SelectObject(hdcMem, oldBitmap);
         DeleteDC(hdcMem);
@@ -2233,11 +2362,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         hdcMem = CreateCompatibleDC(hdc);
         oldBitmap = SelectObject(hdcMem, club_image);
-        
+
         GetObject(club_image, sizeof(bitmap), &bitmap);
 
         double path_offset = swing_path * .08333;
-        if(lefty) BitBlt(hdc, left + 97 - bitmap.bmWidth, top + 25 + int(path_offset * -55) + (face_contact * 17), left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+        if (lefty) BitBlt(hdc, left + 97 - bitmap.bmWidth, top + 25 + int(path_offset * -55) + (face_contact * 17), left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
         else  BitBlt(hdc, left + 220, top + 25 + int(path_offset * 55) + (face_contact * 17), left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
 
         SelectObject(hdcMem, oldBitmap);
@@ -2251,6 +2380,60 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SelectObject(hdc, hOldPen);
         DeleteObject(hPen);
 
+        if (hostmode) {
+            IPv4 ipaddr;
+            if (getMyIP(ipaddr)) {
+                std::stringstream s;
+                s << "Hosting at: " << (int)ipaddr.b1 << "." << (int)ipaddr.b2 << "." << (int)ipaddr.b3 << "." << (int)ipaddr.b4;
+                RECT rect;
+                SetTextColor(hdc, 0x00000000);
+                SetBkMode(hdc, TRANSPARENT);
+                rect.left = left - 5;
+                rect.top = top + 140;
+                DrawTextA(hdc, s.str().c_str(), -1, &rect, DT_SINGLELINE | DT_NOCLIP);
+            }
+        }
+
+        if (clientmode) {
+            if (clientConnected) {
+                HPEN ellipsePen = CreatePen(PS_SOLID, 10, RGB(0, 255, 0));
+                SelectObject(hdc, ellipsePen);
+                Ellipse(hdc, left, top + 145, left + 5, top + 150);
+                std::stringstream s;
+                s << "Connected to: " << (int)hostIP.b1 << "." << (int)hostIP.b2 << "." << (int)hostIP.b3 << "." << (int)hostIP.b4;
+                RECT rect;
+                SetTextColor(hdc, 0x00000000);
+                SetBkMode(hdc, TRANSPARENT);
+                rect.left = left + 15;
+                rect.top = top + 140;
+                DrawTextA(hdc, s.str().c_str(), -1, &rect, DT_SINGLELINE | DT_NOCLIP);
+            }
+            else {
+                HPEN ellipsePen = CreatePen(PS_SOLID, 10, RGB(255, 0, 0));
+                SelectObject(hdc, ellipsePen);
+                Ellipse(hdc, left, top + 145, left + 5, top + 150);
+                std::stringstream s;
+                s << "No Connection";
+                RECT rect;
+                SetTextColor(hdc, 0x00000000);
+                SetBkMode(hdc, TRANSPARENT);
+                rect.left = left + 15;
+                rect.top = top + 140;
+                DrawTextA(hdc, s.str().c_str(), -1, &rect, DT_SINGLELINE | DT_NOCLIP);
+            }
+        }
+
+        //Draw Optipad if connected
+        if (opticonnected) {
+            hdcMem = CreateCompatibleDC(hdc);
+            oldBitmap = SelectObject(hdcMem, opti_bmap);
+
+            GetObject(golfball_bmap, sizeof(bitmap), &bitmap);
+            BitBlt(hdc, left + 295, top + 140, left + bitmap.bmWidth, top + bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+
+            SelectObject(hdcMem, oldBitmap);
+            DeleteDC(hdcMem);
+        }
 
         EndPaint(hWnd, &ps);
     }
@@ -2260,6 +2443,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         DeleteObject(driver_bmap);
         DeleteObject(iron_bmap);
         DeleteObject(putter_bmap);
+        DeleteObject(opti_bmap);
         PostQuitMessage(0);
         break;
     default:
