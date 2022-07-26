@@ -100,7 +100,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\tesseract-include\tesseract41d.lib;..\tesseract-include\leptonica-1.82.0d.lib;libusb-1.0.lib;setupapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libusb-1.0.lib;setupapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -151,16 +151,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="clubreading.h" />
+    <ClInclude Include="clubreadingdata.h" />
+    <ClInclude Include="customtypes.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="hidapi.h" />
     <ClInclude Include="libusb.h" />
+    <ClInclude Include="networkcode.h" />
     <ClInclude Include="RepliShot.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="shotprocessing.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="usbcode.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="clubreading.cpp" />
+    <ClCompile Include="clubreadingdata.cpp" />
+    <ClCompile Include="customtypes.cpp" />
     <ClCompile Include="hid.c" />
+    <ClCompile Include="networkcode.cpp" />
     <ClCompile Include="RepliShot.cpp" />
+    <ClCompile Include="shotprocessing.cpp" />
+    <ClCompile Include="usbcode.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="RepliShot.rc" />
@@ -178,9 +190,6 @@
   <ItemGroup>
     <Library Include="hidapi.lib" />
     <Library Include="libusb-1.0.lib" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="binary1.bin" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

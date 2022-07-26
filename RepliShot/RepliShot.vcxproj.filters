@@ -33,12 +33,48 @@
     <ClInclude Include="libusb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="usbcode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="clubreadingdata.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="clubreading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="customtypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shotprocessing.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="networkcode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RepliShot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hid.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="usbcode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="clubreading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="shotprocessing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="customtypes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="clubreadingdata.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="networkcode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -80,10 +116,5 @@
     <Library Include="libusb-1.0.lib">
       <Filter>Resource Files</Filter>
     </Library>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="binary1.bin">
-      <Filter>Resource Files</Filter>
-    </None>
   </ItemGroup>
 </Project>
