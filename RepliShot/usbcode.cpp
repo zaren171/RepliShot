@@ -17,6 +17,7 @@ extern bool clickMouse;
 extern bool on_top;
 extern bool opticonnected;
 extern bool club_lockstep;
+extern bool club_lockstep;
 
 extern int selected_club;
 extern int num_clubs;
@@ -33,6 +34,8 @@ extern uint8_t* report_buffer;
 extern hid_device* dev;
 extern libusb_device_handle* handle;
 extern std::vector<std::thread> threads;
+
+extern std::mutex club_data;
 
 void perr(char const* format, ...)
 {
@@ -257,6 +260,7 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                             INPUT inputs[2] = {};
                             ZeroMemory(inputs, sizeof(inputs));
 
+                            club_data.lock();
                             if (clickMouse) {
                                 inputs[0].type = INPUT_KEYBOARD; //tap W, sometimes the first keyboard input is missed, so this one is throw away
                                 inputs[0].ki.wVk = 0x57;
@@ -265,10 +269,10 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                                 inputs[1].type = INPUT_KEYBOARD;
                                 inputs[1].ki.wVk = 0x57;
                                 inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
-                            }
 
-                            SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
-                            Sleep(10);
+                                SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+                                Sleep(10);
+                            }
                             if ((agregate & 0xC3) == 0 && clickMouse) { //middle of sensor, change shot shape
                                 inputs[0].type = INPUT_KEYBOARD; //tap C to change shot
                                 inputs[0].ki.wVk = 0x43;
@@ -330,6 +334,7 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
                                 }
                             }
                             SendMessage(clubSelect, CB_SETCURSEL, (WPARAM)selected_club, (LPARAM)0);
+                            club_data.unlock();
 
                             Sleep(250);
                             flush_buffer(dev, data, prev_data, data_size);

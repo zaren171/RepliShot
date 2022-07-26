@@ -1,10 +1,12 @@
 // Mouse_Controller.cpp : Defines the entry point for the application.
 //
 
+//these seem to have to be at the top for things to build... not sure why
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
+//end things that have to be at the top
 
 #include "framework.h"
 #include "RepliShot.h"
@@ -29,6 +31,7 @@
 #include <math.h>
 #include <algorithm>
 #include <vector>
+#include <mutex>
 
 #include "hidapi.h"
 #include "libusb.h"
@@ -101,6 +104,8 @@ SOCKET ClientSocket = INVALID_SOCKET;
 SOCKET HostSocket = INVALID_SOCKET;
 
 std::string ip_addr = "127.0.0.1";
+
+std::mutex club_data;
 
 int desktop_width = 0;
 int desktop_height = 0;
@@ -671,6 +676,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         if (HIWORD(wParam) == CBN_SELCHANGE)
         {
+            club_data.lock();
             selected_club = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
             current_selected_club = clubs;
             for (int i = 0; i < selected_club; i++) {
@@ -679,6 +685,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             selected_club_value = current_selected_club->club;
             TCHAR  ListItem[256];
             (TCHAR)SendMessage((HWND)lParam, (UINT)CB_GETLBTEXT, (WPARAM)selected_club, (LPARAM)ListItem);
+            club_data.unlock();
         }
 
 #ifdef _DEBUG

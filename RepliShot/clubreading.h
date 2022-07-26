@@ -8,6 +8,7 @@
 #include <WinUser.h>
 #include <math.h>
 #include <sstream>
+#include <mutex>
 
 #define MINCLUBCHANGE 750
 

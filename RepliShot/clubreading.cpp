@@ -6,8 +6,11 @@ extern struct Node* clubs;
 extern struct Node* current_selected_club;
 extern bool keep_polling;
 extern bool club_lockstep;
+extern int selected_club;
 extern int selected_club_value;
 extern HWND clubSelect;
+
+extern std::mutex club_data;
 
 void ReadFromScreen(RECT rc)
 {
@@ -56,7 +59,7 @@ void ReadFromScreen(RECT rc)
         }
     }
     int best_error = -1;
-    int selected_club = -1;
+    int picked_club = -1;
     std::ostringstream select_club;
     for (int z = 0; z < CLUBS; z++) {
         int total_error = 0;
@@ -67,14 +70,14 @@ void ReadFromScreen(RECT rc)
         }
         if (best_error < 0 || total_error < best_error) {
             best_error = total_error;
-            selected_club = z;
+            picked_club = z;
             select_club.str("");
             select_club << "Club " << (int)z << " Selected! Error: " << total_error << "\n";
         }
     }
-    //OutputDebugStringA(select_club.str().c_str());
+    OutputDebugStringA(select_club.str().c_str());
 
-    if (best_error > MINCLUBCHANGE) selected_club = -1;
+    if (best_error > MINCLUBCHANGE) picked_club = -1;
 
     //std::ostringstream stros;
     //stros << "New Data!\n{ {";
@@ -89,7 +92,7 @@ void ReadFromScreen(RECT rc)
     //OutputDebugStringA(stros.str().c_str());
 
     int clubvalue = -1;
-    switch (selected_club) {
+    switch (picked_club) {
     case 0:
         clubvalue = Driver;
         break;
@@ -137,10 +140,11 @@ void ReadFromScreen(RECT rc)
         break;
     }
 
+    club_data.lock();
     if (clubvalue != -1 && clubvalue != current_selected_club->club) {
         int attempts = 0;
         current_selected_club = clubs;
-        while (current_selected_club->club != clubvalue && attempts < 20) {
+        while (current_selected_club->club != clubvalue && attempts < 25) {
             current_selected_club = current_selected_club->next;
             attempts++;
         }
@@ -148,6 +152,7 @@ void ReadFromScreen(RECT rc)
         selected_club_value = current_selected_club->club;
         SendMessage(clubSelect, CB_SETCURSEL, (WPARAM)selected_club, (LPARAM)0);
     }
+    club_data.unlock();
 }
 
 void clubReading() {

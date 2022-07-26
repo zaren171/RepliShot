@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <thread>
 #include <vector>
+#include <mutex>
 
 #include "shotprocessing.h"
 
