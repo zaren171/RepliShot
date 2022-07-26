@@ -16,7 +16,6 @@
 #define IDB_DRIVER_BITMAP               131
 #define IDB_IRON_BITMAP                 132
 #define IDB_PUTTER_BITMAP               133
-#define IDR_BINARY1                     138
 #define IDB_OPTI                        139
 #define ID_FILE_KEEPONTOP               32771
 #define ID_FILE_LEFTHANDMODE            32772
