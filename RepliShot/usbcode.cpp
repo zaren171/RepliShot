@@ -348,11 +348,14 @@ void optiPolling(hid_device* dev, libusb_device_handle* handle, uint8_t endpoint
             }
         }
         else {
-            if (libusb_open_device_with_vid_pid(NULL, VID, PID) == NULL) {
+            libusb_device_handle* disconnect_check_handle;
+            disconnect_check_handle = libusb_open_device_with_vid_pid(NULL, VID, PID);
+            if (disconnect_check_handle == NULL) {
                 opticonnected = FALSE;
                 RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
                 return;
             }
+            libusb_close(disconnect_check_handle);
         }
         if (on_top) SetWindowPos(mainWindow, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 

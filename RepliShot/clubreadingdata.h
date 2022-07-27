@@ -4,7 +4,7 @@
 
 #define VBINS 150
 #define HBINS 15
-#define CLUBS 14
+#define CLUBS 22
 
 #define THRESHOLD 240
 

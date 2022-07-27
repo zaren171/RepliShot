@@ -75,7 +75,7 @@ void ReadFromScreen(RECT rc)
             select_club << "Club " << (int)z << " Selected! Error: " << total_error << "\n";
         }
     }
-    OutputDebugStringA(select_club.str().c_str());
+    //OutputDebugStringA(select_club.str().c_str());
 
     if (best_error > MINCLUBCHANGE) picked_club = -1;
 
@@ -91,60 +91,11 @@ void ReadFromScreen(RECT rc)
     //}
     //OutputDebugStringA(stros.str().c_str());
 
-    int clubvalue = -1;
-    switch (picked_club) {
-    case 0:
-        clubvalue = Driver;
-        break;
-    case 1:
-        clubvalue = W3;
-        break;
-    case 2:
-        clubvalue = W5;
-        break;
-    case 3:
-        clubvalue = HY5;
-        break;
-    case 4:
-        clubvalue = I5;
-        break;
-    case 5:
-        clubvalue = I6;
-        break;
-    case 6:
-        clubvalue = I7;
-        break;
-    case 7:
-        clubvalue = I8;
-        break;
-    case 8:
-        clubvalue = I9;
-        break;
-    case 9:
-        clubvalue = PW;
-        break;
-    case 10:
-        clubvalue = GW;
-        break;
-    case 11:
-        clubvalue = SW;
-        break;
-    case 12:
-        clubvalue = LW;
-        break;
-    case 13:
-        clubvalue = Putter;
-        break;
-    default:
-        clubvalue = -1;
-        break;
-    }
-
     club_data.lock();
-    if (clubvalue != -1 && clubvalue != current_selected_club->club) {
+    if (picked_club != -1 && picked_club != current_selected_club->club) {
         int attempts = 0;
         current_selected_club = clubs;
-        while (current_selected_club->club != clubvalue && attempts < 25) {
+        while (current_selected_club->club != picked_club && attempts < 25) {
             current_selected_club = current_selected_club->next;
             attempts++;
         }
@@ -153,6 +104,10 @@ void ReadFromScreen(RECT rc)
         SendMessage(clubSelect, CB_SETCURSEL, (WPARAM)selected_club, (LPARAM)0);
     }
     club_data.unlock();
+
+    ReleaseDC(NULL, desktop_hdc);
+    DeleteDC(hDest);
+    DeleteObject(hBitmap2);
 }
 
 void clubReading() {
