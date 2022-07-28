@@ -364,6 +364,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     SendMessage(clubSelect, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
 
+    //TODO: config file module
     // std::ifstream is RAII, i.e. no need to call close
     std::ifstream cFile("config.ini");
     if (cFile.is_open())
@@ -571,6 +572,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     return TRUE;
 }
 
+//TODO: paint module
 // GetRotatedBitmapNT - Create a new bitmap with rotated image
 // Returns - Returns new bitmap with rotated image
 // hBitmap - Bitmap to rotate
@@ -826,6 +828,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             SetMenuItemInfo(hmenu, ID_FILE_LEFTHANDMODE, FALSE, &menuItem);
 
+            //TODO: break into paint submodule
+            
             //flip bitmaps for lefty mode toggle
             PAINTSTRUCT ps;
             BITMAP bm;
@@ -963,6 +967,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             break;
         case ID_FILE_SAVECONFIG:
+            //TODO: config file module
             cfgfile.open("config.ini");
             //take shot
             if (clickMouse) cfgfile << "Shot=True\n";
@@ -1029,6 +1034,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_PAINT:
     {
+        //TODO: break into paint submodule
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
 
