@@ -153,11 +153,13 @@
   <ItemGroup>
     <ClInclude Include="clubreading.h" />
     <ClInclude Include="clubreadingdata.h" />
+    <ClInclude Include="configfile.h" />
     <ClInclude Include="customtypes.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="hidapi.h" />
     <ClInclude Include="libusb.h" />
     <ClInclude Include="networkcode.h" />
+    <ClInclude Include="paint.h" />
     <ClInclude Include="RepliShot.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="shotprocessing.h" />
@@ -167,9 +169,11 @@
   <ItemGroup>
     <ClCompile Include="clubreading.cpp" />
     <ClCompile Include="clubreadingdata.cpp" />
+    <ClCompile Include="configfile.cpp" />
     <ClCompile Include="customtypes.cpp" />
     <ClCompile Include="hid.c" />
     <ClCompile Include="networkcode.cpp" />
+    <ClCompile Include="paint.cpp" />
     <ClCompile Include="RepliShot.cpp" />
     <ClCompile Include="shotprocessing.cpp" />
     <ClCompile Include="usbcode.cpp" />

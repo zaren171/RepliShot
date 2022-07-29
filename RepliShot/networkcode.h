@@ -13,5 +13,3 @@
 #define DEFAULT_PORT "24607"
 
 void network_stack();
-
-bool getMyIP(IPv4& myIP);

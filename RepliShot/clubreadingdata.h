@@ -8,6 +8,8 @@
 
 #define THRESHOLD 240
 
+#define MINCLUBCHANGE 750
+
 class data {
 	public:
 		const static int club_image_data_1080p[CLUBS][HBINS][VBINS];

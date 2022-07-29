@@ -10,8 +10,6 @@
 #include <sstream>
 #include <mutex>
 
-#define MINCLUBCHANGE 750
-
 void ReadFromScreen(RECT rc);
 
 void clubReading();

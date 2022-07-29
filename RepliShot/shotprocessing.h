@@ -14,8 +14,6 @@
 #define SENSORSPACING 185
 #define LEDSPACING 15
 
-club getClubData(int club_num);
-
 void processShotData(uint8_t* data, int data_size);
 
 void preciseSleep(double seconds);

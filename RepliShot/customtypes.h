@@ -31,4 +31,8 @@ struct IPv4
 
 void insertNode(struct Node** start, int value);
 
+club getClubData(int club_num);
+
+bool getMyIP(IPv4& myIP);
+
 #endif

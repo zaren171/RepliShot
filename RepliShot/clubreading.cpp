@@ -79,18 +79,6 @@ void ReadFromScreen(RECT rc)
 
     if (best_error > MINCLUBCHANGE) picked_club = -1;
 
-    //std::ostringstream stros;
-    //stros << "New Data!\n{ {";
-    //for (y = 0; y < HBINS; y++) {
-    //    for (x = 0; x < VBINS; x++) {
-    //        stros << histogram[y][x];
-    //        stros << ", ";
-    //    }
-    //    if (y < HBINS - 1) stros << "},\n{";
-    //    else stros << "} }\n";
-    //}
-    //OutputDebugStringA(stros.str().c_str());
-
     club_data.lock();
     if (picked_club != -1 && picked_club != current_selected_club->club) {
         int attempts = 0;
