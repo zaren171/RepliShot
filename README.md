@@ -39,7 +39,7 @@ The Options menu has an option for left handed mode, which will adjust the displ
 
 Arcade mode includes a multiplier to the ball's carry distance.  Arcade mode allows users to hit farther (or shorter if set to < 1) instead of trying to recreate the shots actual distance.  This mode will allow anyone to get additional distance out of their clubs, and play TGC more like a video game.  When Arcade mode is activated additional buttons will appear in the interface as seen in the following screen shot in the red box.  The '+' and '-' buttons increase/decrease the distance muliplier in 0.05 increments (5%).
 
-![Replishot Options](https://github.com/zaren171/RepliShot/blob/master/Replishot_arcade_mult.PNG)
+![Replishot Options](https://github.com/zaren171/RepliShot/blob/master/Replishot_arcade_mult.png)
 
 The option for Driving Range Mode is for use when using the TGC driving range.  At the driving range the shot shape (slice/hook) is not cleared between shots.  In driving range mode the club is quickly switched and then switched back before the shot, clearing any previous slice/hook data.  This is unneccesary when playing a round as every shot resets to straight, even if the same club is suggested 2 shots in a row.
 
