@@ -115,9 +115,7 @@ void screenCaptureDebug(HDC hdc, int left, int top) {
     RECT capture_area;
     HWND SomeWindowHandle = GetDesktopWindow();
     GetWindowRect(SomeWindowHandle, &capture_area);
-    capture_area.left = capture_area.right * 4 / 5;
-    capture_area.top = capture_area.bottom * 0.15;
-    capture_area.bottom = capture_area.bottom * 0.19;
+    capture_area.bottom = capture_area.bottom * 0.5;
     
     int x, y;
     int capture_width = capture_area.right - capture_area.left;
@@ -138,6 +136,92 @@ void screenCaptureDebug(HDC hdc, int left, int top) {
     SelectObject(hDest, hBitmap2);
     BitBlt(hDest, 0, 0, capture_width, capture_height, desktop_hdc, capture_area.left, capture_area.top, SRCCOPY);
     
+    //box detection variables
+    int min_len = 30;
+    int found_vlines = 0;
+    int found_hlines = 0;
+    int line_len = 0;
+
+    int bl_corners = 0;
+    int tr_corners = 0;
+    //find horizontal lines
+    for (y = min_len; y < capture_height-min_len; y++) {
+        for (x = 0; x < capture_width; x++) {
+            int pixel = (x + (y * capture_width)) * 4;
+            if ((bitPointer[pixel] > THRESHOLD) && (bitPointer[pixel + 1] > THRESHOLD) && (bitPointer[pixel + 2] > THRESHOLD)) {
+                line_len++;
+            }
+            else {
+                line_len = 0;
+            }
+            if (line_len >= min_len && line_len <= min_len + 2) {
+                bool bl_corner = TRUE;
+                for (int i = 2; i < min_len; i++) {
+                    int test_pixel = ((x - (min_len+2)) + ((y + i) * capture_width)) * 4;
+                    if (!((bitPointer[test_pixel] > THRESHOLD) && (bitPointer[test_pixel + 1] > THRESHOLD) && (bitPointer[test_pixel + 2] > THRESHOLD))) {
+                        bl_corner = FALSE;
+                    }
+                    test_pixel = ((x - (min_len + 1)) + ((y + i) * capture_width)) * 4;
+                    if ((bitPointer[test_pixel] > THRESHOLD) && (bitPointer[test_pixel + 1] > THRESHOLD) && (bitPointer[test_pixel + 2] > THRESHOLD)) {
+                        bl_corner = FALSE;
+                    }
+                }
+                if (bl_corner) {
+                    bitPointer[pixel] = 0;
+                    bitPointer[pixel + 1] = 0;
+                    bitPointer[pixel + 2] = 255;
+                    //for (int past_pixel = 1; past_pixel < min_len; past_pixel++) {
+                    //    bitPointer[pixel - (past_pixel * 4)] = 0;
+                    //    bitPointer[pixel - (past_pixel * 4) + 1] = 0;
+                    //    bitPointer[pixel - (past_pixel * 4) + 2] = 255;
+                    //}
+                    //for (int i = 2; i < min_len; i++) {
+                    //    int test_pixel = ((x - (min_len + 2)) + ((y + i) * capture_width)) * 4;
+                    //    bitPointer[test_pixel] = 0;
+                    //    bitPointer[test_pixel + 1] = 0;
+                    //    bitPointer[test_pixel + 2] = 255;
+                    //}
+                    bl_corners++;
+                }
+            }
+            if (line_len >= min_len) {
+                bool tr_corner = TRUE;
+                for (int i = 2; i < min_len; i++) {
+                    int test_pixel = ((x + 2) + ((y - i) * capture_width)) * 4;
+                    if (!((bitPointer[test_pixel] > THRESHOLD) && (bitPointer[test_pixel + 1] > THRESHOLD) && (bitPointer[test_pixel + 2] > THRESHOLD))) {
+                        tr_corner = FALSE;
+                    }
+                    test_pixel = ((x + 1) + ((y - i) * capture_width)) * 4;
+                    if ((bitPointer[test_pixel] > THRESHOLD) && (bitPointer[test_pixel + 1] > THRESHOLD) && (bitPointer[test_pixel + 2] > THRESHOLD)) {
+                        tr_corner = FALSE;
+                    }
+                }
+                if (tr_corner) {
+                    bitPointer[pixel] = 0;
+                    bitPointer[pixel + 1] = 255;
+                    bitPointer[pixel + 2] = 0;
+                    //for (int past_pixel = 1; past_pixel < min_len; past_pixel++) {
+                    //    bitPointer[pixel - (past_pixel * 4)] = 0;
+                    //    bitPointer[pixel - (past_pixel * 4) + 1] = 255;
+                    //    bitPointer[pixel - (past_pixel * 4) + 2] = 0;
+                    //}
+                    //for (int i = 2; i < min_len; i++) {
+                    //    int test_pixel = ((x + 2) + ((y - i) * capture_width)) * 4;
+                    //    bitPointer[test_pixel] = 0;
+                    //    bitPointer[test_pixel + 1] = 255;
+                    //    bitPointer[test_pixel + 2] = 0;
+                    //}
+                    tr_corners++;
+                }
+            }
+        }
+    }
+    std::ostringstream debug;
+    debug << "bl: " << bl_corners << " tr: " << tr_corners << "\n";
+    OutputDebugStringA(debug.str().c_str());
+
+    //club detection stuff
+    /*
     int bin_size = (capture_area.bottom - capture_area.top) / (HBINS - 1);
     int histogram[HBINS][VBINS];
     int intensities[3][5];
@@ -183,11 +267,13 @@ void screenCaptureDebug(HDC hdc, int left, int top) {
         else stros << "} }\n";
     }
     OutputDebugStringA(stros.str().c_str());
-    
-    BitBlt(hdc, left, top, capture_area.right - capture_area.left, capture_area.bottom - capture_area.top, desktop_hdc, capture_area.left, capture_area.top, SRCCOPY);
+    */
+
+    BitBlt(hdc, left, top, capture_area.right - capture_area.left, capture_area.bottom - capture_area.top, hDest, capture_area.left, capture_area.top, SRCCOPY);
     
     ReleaseDC(NULL, desktop_hdc);
     DeleteDC(hDest);
+    DeleteObject(hBitmap2);
 }
 
 void drawGraphics(HWND hWnd){

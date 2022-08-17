@@ -4,6 +4,7 @@
 #include <WinUser.h>
 #include <windowsx.h>
 #include <string>
+#include <sstream>
 #include <fstream>
 
 #include "resource.h"

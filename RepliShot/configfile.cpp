@@ -7,6 +7,7 @@ extern bool lefty;
 extern bool club_lockstep;
 extern bool driving_range;
 extern bool front_sensor_features;
+extern bool arcade_mode;
 
 extern HWND mainWindow;
 extern HWND clubSelect;
@@ -17,11 +18,16 @@ extern HWND clubSpeedValue;
 extern HWND faceAngleValue;
 extern HWND pathValue;
 extern HWND faceContactValue;
+extern HWND arcadeValue;
+extern HWND arcadeUp;
+extern HWND arcadeDown;
 
 extern Node* clubs;
 extern Node* current_selected_club;
 
 extern std::string ip_addr;
+
+extern double arcade_mult;
 
 extern int num_clubs;
 extern int selected_club_value;
@@ -83,6 +89,26 @@ void readconfig(HWND hWnd) {
                 GetMenuItemInfo(hmenu, ID_OPTIONS_LOCKSTEPMODE, FALSE, &menuItem);
                 menuItem.fState = MFS_CHECKED;
                 SetMenuItemInfo(hmenu, ID_OPTIONS_LOCKSTEPMODE, FALSE, &menuItem);
+            }
+            else if (!(name.compare("Arcade") || value.compare("True"))) {
+                arcade_mode = TRUE;
+                HMENU hmenu = GetMenu(hWnd);
+                MENUITEMINFO menuItem = { 0 };
+                menuItem.cbSize = sizeof(MENUITEMINFO);
+                menuItem.fMask = MIIM_STATE;
+                GetMenuItemInfo(hmenu, ID_OPTIONS_ARCADEMODE, FALSE, &menuItem);
+                menuItem.fState = MFS_CHECKED;
+                SetMenuItemInfo(hmenu, ID_OPTIONS_ARCADEMODE, FALSE, &menuItem);
+
+                ShowWindow(arcadeUp, SW_NORMAL);
+                ShowWindow(arcadeDown, SW_NORMAL);
+                ShowWindow(arcadeValue, SW_NORMAL);
+            }
+            else if (!(name.compare("ArcadeScale"))) {
+                arcade_mult = stod(value);
+                std::wstringstream wss;
+                wss << arcade_mult;
+                SetWindowText(arcadeValue, wss.str().c_str());
             }
             else if (!(name.compare("DrivingRange") || value.compare("True"))) {
                 driving_range = TRUE;
@@ -232,6 +258,7 @@ void readconfig(HWND hWnd) {
         current_selected_club = clubs;
     }
 
+    RedrawWindow(mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
 }
 
 void saveconfig() {
@@ -253,6 +280,11 @@ void saveconfig() {
     //lockstep
     if (club_lockstep) cfgfile << "Lockstep=True\n";
     else cfgfile << "Lockstep=False\n";
+    //arcademode
+    if (arcade_mode) cfgfile << "Arcade=True\n";
+    else cfgfile << "Arcade=False\n";
+    //arcademult
+    cfgfile << "ArcadeScale=" << arcade_mult << "\n";
     //drivingrange
     if (driving_range) cfgfile << "DrivingRange=True\n";
     else cfgfile << "DrivingRange=False\n";

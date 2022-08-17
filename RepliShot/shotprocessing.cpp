@@ -5,6 +5,7 @@ extern bool logging;
 extern bool lefty;
 extern bool driving_range;
 extern bool clickMouse;
+extern bool arcade_mode;
 
 extern int desktop_width;
 extern int desktop_height;
@@ -20,6 +21,8 @@ extern double sideaccel;
 extern double sidescale;
 extern double slope;
 extern int selected_club_value;
+
+extern double arcade_mult;
 
 extern HWND mainWindow;
 extern HWND clubSpeedValue;
@@ -333,8 +336,9 @@ void processShotData(uint8_t* data, int data_size) {
     {
         double carry = (swing_speed / 100) * current_club.dist_at_100;
 
-        double carry_mult = 257 / carry;
-        midswingdelay = int(60 + (carry * (2 * carry_mult)));
+        if (arcade_mode) carry = carry * arcade_mult;
+        
+        midswingdelay = int(60 + ((carry/current_club.dist_at_100) * 528));
         if (midswingdelay > 625) midswingdelay = 625; //625 is a full powered shot, so a longer wait won't help.  Sorry if you can outdrive the game :)
 
         backswingstepsize = 7.0 * current_club.smash_factor;

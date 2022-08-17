@@ -45,6 +45,12 @@
 
 #define MAX_LOADSTRING 100
 
+//TODO:
+//multiscreen: reading the right region for club info with multiple monitors
+//resolution: reading the right region for club info at different apsect ratios
+//resolution: scaling club reading data, or gathering new data for different resolutions
+//network code: fix it so it isn't so fragile
+
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
@@ -66,6 +72,9 @@ HWND clubSpeedValue = NULL;
 HWND faceAngleValue = NULL;
 HWND pathValue = NULL;
 HWND faceContactValue = NULL;
+HWND arcadeValue = NULL;
+HWND arcadeUp = NULL;
+HWND arcadeDown = NULL;
 #ifdef _DEBUG
 HWND backswingstepsizeValue = NULL;
 HWND backswingstepsValue = NULL;
@@ -121,6 +130,8 @@ double swing_angle = 0.0;
 int swing_path = 0;
 int face_contact = 0;
 
+double arcade_mult = 1.5;
+
 bool logging = FALSE; //write raw shot data to data_log.txt
 
 bool hostmode = FALSE;
@@ -135,6 +146,7 @@ bool lefty = FALSE;
 bool club_lockstep = FALSE;
 bool driving_range = FALSE;
 bool front_sensor_features = FALSE;
+bool arcade_mode = FALSE;
 
 struct Node* clubs = NULL;
 struct Node* current_selected_club = NULL;
@@ -333,6 +345,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     clubSelect = CreateWindowW(TEXT("COMBOBOX"), TEXT("Clubs"), WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_DROPDOWN | CBS_HASSTRINGS | WS_VSCROLL, 10, y_offset, 100, 200, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
     y_offset += 30;
 
+    arcadeValue = CreateWindowW(TEXT("Static"), TEXT("1.5"), WS_CHILD, 155, y_offset, 20, 20, hWnd, NULL, NULL, NULL);
+    arcadeUp = CreateWindowW(TEXT("BUTTON"), TEXT("+"), WS_CHILD | WS_BORDER | BS_DEFPUSHBUTTON, 180, y_offset, 30, 20, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
+    arcadeDown = CreateWindowW(TEXT("BUTTON"), TEXT("-"), WS_CHILD | WS_BORDER | BS_DEFPUSHBUTTON, 120, y_offset, 30, 20, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
+
     TCHAR clublist[14][16] =
     {
         TEXT("Driver"), TEXT("3 Wood"), TEXT("5 Wood"), TEXT("5 Hybrid"),
@@ -498,6 +514,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         else if (lParam == LPARAM(reswingButton)) {
             takeShot();
         }
+        else if (lParam == LPARAM(arcadeUp)) {
+            if (arcade_mult < 9.9) {
+                arcade_mult = arcade_mult + 0.1;
+                std::wstringstream wss;
+                wss << arcade_mult;
+                SetWindowText(arcadeValue, wss.str().c_str());
+            }
+        }
+        else if (lParam == LPARAM(arcadeDown)) {
+            if (arcade_mult < 9.9) {
+                arcade_mult = arcade_mult - 0.1;
+                std::wstringstream wss;
+                wss << arcade_mult;
+                SetWindowText(arcadeValue, wss.str().c_str());
+            }
+        }
         
         // Parse the menu selections:
         switch (wmId)
@@ -545,6 +577,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             flipBitmap(hWnd, driver_bmap);
             flipBitmap(hWnd, iron_bmap);
             flipBitmap(hWnd, putter_bmap);
+            break;
+        case ID_OPTIONS_ARCADEMODE:
+            arcade_mode = !arcade_mode;
+
+            GetMenuItemInfo(hmenu, ID_OPTIONS_ARCADEMODE, FALSE, &menuItem);
+
+            if (menuItem.fState == MFS_CHECKED) {
+                // Checked, uncheck it
+                menuItem.fState = MFS_UNCHECKED;
+                ShowWindow(arcadeUp, SW_HIDE);
+                ShowWindow(arcadeDown, SW_HIDE);
+                ShowWindow(arcadeValue, SW_HIDE);
+            }
+            else {
+                // Unchecked, check it
+                menuItem.fState = MFS_CHECKED;
+                ShowWindow(arcadeUp, SW_NORMAL);
+                ShowWindow(arcadeDown, SW_NORMAL);
+                ShowWindow(arcadeValue, SW_NORMAL);
+            }
+            SetMenuItemInfo(hmenu, ID_OPTIONS_ARCADEMODE, FALSE, &menuItem);
+
             break;
         case ID_OPTIONS_LOCKSTEPMODE:
             club_lockstep = !club_lockstep;
