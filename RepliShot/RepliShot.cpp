@@ -345,7 +345,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     clubSelect = CreateWindowW(TEXT("COMBOBOX"), TEXT("Clubs"), WS_VISIBLE | WS_CHILD | CBS_DROPDOWNLIST | CBS_DROPDOWN | CBS_HASSTRINGS | WS_VSCROLL, 10, y_offset, 100, 200, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
     y_offset += 30;
 
-    arcadeValue = CreateWindowW(TEXT("Static"), TEXT("1.5"), WS_CHILD, 155, y_offset, 20, 20, hWnd, NULL, NULL, NULL);
+    arcadeValue = CreateWindowW(TEXT("Static"), TEXT("1.5"), WS_CHILD, 150, y_offset, 30, 20, hWnd, NULL, NULL, NULL);
     arcadeUp = CreateWindowW(TEXT("BUTTON"), TEXT("+"), WS_CHILD | WS_BORDER | BS_DEFPUSHBUTTON, 180, y_offset, 30, 20, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
     arcadeDown = CreateWindowW(TEXT("BUTTON"), TEXT("-"), WS_CHILD | WS_BORDER | BS_DEFPUSHBUTTON, 120, y_offset, 30, 20, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
 
