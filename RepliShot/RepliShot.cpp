@@ -516,7 +516,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         else if (lParam == LPARAM(arcadeUp)) {
             if (arcade_mult < 9.9) {
-                arcade_mult = arcade_mult + 0.1;
+                arcade_mult = arcade_mult + 0.05;
                 std::wstringstream wss;
                 wss << arcade_mult;
                 SetWindowText(arcadeValue, wss.str().c_str());
@@ -524,7 +524,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         else if (lParam == LPARAM(arcadeDown)) {
             if (arcade_mult < 9.9) {
-                arcade_mult = arcade_mult - 0.1;
+                arcade_mult = arcade_mult - 0.05;
                 std::wstringstream wss;
                 wss << arcade_mult;
                 SetWindowText(arcadeValue, wss.str().c_str());

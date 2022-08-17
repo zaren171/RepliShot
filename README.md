@@ -23,6 +23,8 @@ The "Club Speed", "Face Angle", "Path", and "Face Contact" will dispay the measu
 
 ![Replishot Options](https://github.com/zaren171/RepliShot/blob/master/Replishot_swing_data.PNG)
 
+There is also an indicator in the bottom right corner to display whether or not Replishot is currently connected to the Optishot pad.  You can reconnect in the File menu if needed.
+
 ## Menus and Options
 
 ![Replishot Options](https://github.com/zaren171/RepliShot/blob/master/Replishot_options_menu.PNG)
@@ -35,9 +37,15 @@ Next in the Options menu there is an option for Lockstep Mode.  In the lockstep 
 
 The Options menu has an option for left handed mode, which will adjust the display of metrics, etc. so they are correctly reported for left handed swings.
 
+Arcade mode includes a multiplier to the ball's carry distance.  Arcade mode allows users to hit farther (or shorter if set to < 1) instead of trying to recreate the shots actual distance.  This mode will allow anyone to get additional distance out of their clubs, and play TGC more like a video game.  When Arcade mode is activated additional buttons will appear in the interface as seen in the following screen shot in the red box.  The '+' and '-' buttons increase/decrease the distance muliplier in 0.05 increments (5%).
+
+![Replishot Options](https://github.com/zaren171/RepliShot/blob/master/Replishot_arcade_mult.PNG)
+
 The option for Driving Range Mode is for use when using the TGC driving range.  At the driving range the shot shape (slice/hook) is not cleared between shots.  In driving range mode the club is quickly switched and then switched back before the shot, clearing any previous slice/hook data.  This is unneccesary when playing a round as every shot resets to straight, even if the same club is suggested 2 shots in a row.
 
-The final option is for Front Sensor Features, which are discussed in the next section.  When checked, these features will be enabled and available for use.
+The next option is for Front Sensor Features, which are discussed in the next section.  When checked, these features will be enabled and available for use.
+
+The Network Mode option is still in development.  The goal is to allow two copies of Replishot to communicate with eachother over a network.  This would allows a less powerful computer to talk to the Optishot pad and send data to a more powerful computer running TGC 2019.
 
 ## Front Sensor Special Functions
 
