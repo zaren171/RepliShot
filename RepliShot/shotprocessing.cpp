@@ -334,15 +334,29 @@ void processShotData(uint8_t* data, int data_size) {
     }
     else
     {
-        double carry = (swing_speed / 100) * current_club.dist_at_100;
-
-        if (arcade_mode) carry = carry * arcade_mult;
-        
-        midswingdelay = int(60 + ((carry/current_club.dist_at_100) * 528));
-        if (midswingdelay > 625) midswingdelay = 625; //625 is a full powered shot, so a longer wait won't help.  Sorry if you can outdrive the game :)
+        //The chart this is based on seems to be rather inacurate for it's distances, so reverting to the old code again.
+        // 
+        //double carry = (swing_speed / 100) * current_club.dist_at_100;
+        //
+        //if (arcade_mode) carry = carry * arcade_mult;
+        //
+        //midswingdelay = int(60 + ((carry/current_club.dist_at_100) * 528));
+        //if (midswingdelay > 625) midswingdelay = 625; //625 is a full powered shot, so a longer wait won't help.  Sorry if you can outdrive the game :)
 
         backswingstepsize = 7.0 * current_club.smash_factor;
         forwardswingstepsize = 25.0 * current_club.smash_factor; // 15/50 goes right, 150/7 goes left, no control beyond default
+
+        if (swing_speed > current_club.club_speed) swing_speed = current_club.club_speed; //max out swing speed so you don't delay too long and get a worse shot
+
+        if (selected_club_value > I9) { // Wedges
+            midswingdelay = 100 + int(500.0 * (swing_speed / current_club.club_speed));
+        }
+        else if (selected_club_value > W5) { // Hybrid and Irons
+            midswingdelay = 50 + int(575.0 * (swing_speed / current_club.club_speed));
+        }
+        else { // Driver and Woods
+            midswingdelay = 100 + int(525.0 * (swing_speed / current_club.club_speed));
+        }
 
     }
 

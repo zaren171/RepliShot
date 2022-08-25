@@ -14,6 +14,7 @@ struct club {
     double club_loft;
     double launch_angle;
     double dist_at_100;
+    double club_speed;
     double smash_factor;
 };
 

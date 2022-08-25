@@ -46,6 +46,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 10;
         current_club.launch_angle = 10.9;
         current_club.dist_at_100 = 240;
+        current_club.club_speed = 113;
         current_club.smash_factor = 1.48;
         break;
     case W2:
@@ -53,7 +54,8 @@ club getClubData(int club_num) {
         current_club.club_mass = 190;
         current_club.club_loft = 16.5;
         current_club.launch_angle = 9.2;
-        current_club.dist_at_100 = 119;
+        current_club.dist_at_100 = 219;
+        current_club.club_speed = 110;
         current_club.smash_factor = 1.48;
         break;
     case W3:
@@ -62,6 +64,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 16.5;
         current_club.launch_angle = 9.2;
         current_club.dist_at_100 = 209;
+        current_club.club_speed = 107;
         current_club.smash_factor = 1.48;
         break;
     case W4:
@@ -70,6 +73,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 16.5;
         current_club.launch_angle = 9.2;
         current_club.dist_at_100 = 200;
+        current_club.club_speed = 105;
         current_club.smash_factor = 1.48;
         break;
     case W5:
@@ -78,6 +82,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 21;
         current_club.launch_angle = 9.4;
         current_club.dist_at_100 = 195;
+        current_club.club_speed = 103;
         current_club.smash_factor = 1.47;
         break;
     case HY2:
@@ -86,6 +91,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 19;
         current_club.launch_angle = 10.2;
         current_club.dist_at_100 = 201;
+        current_club.club_speed = 106;
         current_club.smash_factor = 1.46;
         break;
     case HY3:
@@ -94,6 +100,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 19;
         current_club.launch_angle = 10.2;
         current_club.dist_at_100 = 192;
+        current_club.club_speed = 104;
         current_club.smash_factor = 1.46;
         break;
     case HY4:
@@ -102,6 +109,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 19;
         current_club.launch_angle = 10.2;
         current_club.dist_at_100 = 184;
+        current_club.club_speed = 102;
         current_club.smash_factor = 1.46;
         break;
     case HY5:
@@ -110,6 +118,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 19;
         current_club.launch_angle = 10.2;
         current_club.dist_at_100 = 179;
+        current_club.club_speed = 100;
         current_club.smash_factor = 1.46;
         break;
     case I2:
@@ -118,6 +127,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 19;
         current_club.launch_angle = 10.4;
         current_club.dist_at_100 = 191;
+        current_club.club_speed = 100;
         current_club.smash_factor = 1.45;
         break;
     case I3:
@@ -126,6 +136,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 19;
         current_club.launch_angle = 10.4;
         current_club.dist_at_100 = 181;
+        current_club.club_speed = 98;
         current_club.smash_factor = 1.45;
         break;
     case I4:
@@ -134,6 +145,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 21;
         current_club.launch_angle = 11.0;
         current_club.dist_at_100 = 171;
+        current_club.club_speed = 96;
         current_club.smash_factor = 1.43;
         break;
     case I5:
@@ -142,6 +154,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 23.5;
         current_club.launch_angle = 12.1;
         current_club.dist_at_100 = 162;
+        current_club.club_speed = 94;
         current_club.smash_factor = 1.41;
         break;
     case I6:
@@ -150,6 +163,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 26.5;
         current_club.launch_angle = 14.1;
         current_club.dist_at_100 = 154;
+        current_club.club_speed = 92;
         current_club.smash_factor = 1.38;
         break;
     case I7:
@@ -158,6 +172,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 30.5;
         current_club.launch_angle = 16.3;
         current_club.dist_at_100 = 146;
+        current_club.club_speed = 90;
         current_club.smash_factor = 1.33;
         break;
     case I8:
@@ -166,6 +181,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 34.5;
         current_club.launch_angle = 18.1;
         current_club.dist_at_100 = 137;
+        current_club.club_speed = 87;
         current_club.smash_factor = 1.32;
         break;
     case I9:
@@ -174,6 +190,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 38.5;
         current_club.launch_angle = 20.4;
         current_club.dist_at_100 = 128;
+        current_club.club_speed = 85;
         current_club.smash_factor = 1.28;
         break;
     case PW:
@@ -182,6 +199,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 43;
         current_club.launch_angle = 24.2;
         current_club.dist_at_100 = 118;
+        current_club.club_speed = 83;
         current_club.smash_factor = 1.23;
         break;
     case GW:
@@ -190,6 +208,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 48;
         current_club.launch_angle = 26;
         current_club.dist_at_100 = 108;
+        current_club.club_speed = 81;
         current_club.smash_factor = 1.21;
         break;
     case SW:
@@ -198,6 +217,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 54;
         current_club.launch_angle = 30;
         current_club.dist_at_100 = 97;
+        current_club.club_speed = 79;
         current_club.smash_factor = 1.19;
         break;
     case LW:
@@ -206,6 +226,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 54;
         current_club.launch_angle = 30;
         current_club.dist_at_100 = 86;
+        current_club.club_speed = 77;
         current_club.smash_factor = 1.19;
         break;
     case Putter:
@@ -214,6 +235,7 @@ club getClubData(int club_num) {
         current_club.club_loft = 0;
         current_club.launch_angle = 0;
         current_club.dist_at_100 = 10;
+        current_club.club_speed = 10;
         current_club.smash_factor = 1.0;
         break;
     default:
