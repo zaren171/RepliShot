@@ -6,6 +6,7 @@ extern bool lefty;
 extern bool driving_range;
 extern bool clickMouse;
 extern bool arcade_mode;
+extern bool club_lockstep;
 
 extern int desktop_width;
 extern int desktop_height;
@@ -365,7 +366,8 @@ void processShotData(uint8_t* data, int data_size) {
     if (average < -17) average = -17;
     slope = tan(average * PI / -180) * 4.0; //path of ball is affected by how open/closed the club is
 
-    sideaccel = (slope - (path * .08333333)) * 10.0; //ball curve is affected by club path relative to face angle
+    //sideaccel = (slope - (path * .08333333)) * 10.0; //ball curve is affected by club path relative to face angle
+    sideaccel = (path * .08333333) * -20.0; //ball curve is affected by club path relative to face angle
 
     sidescale = 0;         //Aiming left/right, should be done manually by user
 
@@ -417,7 +419,7 @@ void setCurve()
         inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
         SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
-        Sleep(10);
+        Sleep(200);
 
         inputs[0].type = INPUT_KEYBOARD; //tap Z to change club
         inputs[0].ki.wVk = 0x5A;
@@ -428,7 +430,7 @@ void setCurve()
         inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
         SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
-        Sleep(10);
+        Sleep(200);
 
         inputs[0].type = INPUT_KEYBOARD; //tap x to go back to same club
         inputs[0].ki.wVk = 0x58;         //this resets the shot curve to be straight
@@ -439,7 +441,7 @@ void setCurve()
         inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
         SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
-        Sleep(10);
+        Sleep(200);
     }
 
     inputs[0].type = INPUT_KEYBOARD;
@@ -476,10 +478,13 @@ void setCurve()
     inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
     SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
-    Sleep(10);
+    Sleep(200);
 }
 
 void takeShot() {
+    bool return_lockstep = club_lockstep;
+    club_lockstep = FALSE;
+
     double cursorX = desktop_width / 2;
     double cursorY = desktop_height / 2;
     int backswingspeed = 6;
@@ -489,9 +494,9 @@ void takeShot() {
     SetCursorPos(cursorX, cursorY);
     if (clickMouse) {
         mouse_event(MOUSEEVENTF_LEFTDOWN, cursorX, cursorY, 0, 0); //click the window to ensure it's in focus before doing keyboard stuff
-        Sleep(100);
+        Sleep(200);
         mouse_event(MOUSEEVENTF_LEFTUP, cursorX, cursorY, 0, 0);
-        Sleep(100);
+        Sleep(200);
         if (selected_club_value != Putter) setCurve();
         mouse_event(MOUSEEVENTF_LEFTDOWN, cursorX, cursorY, 0, 0); //click for start of shot
     }
@@ -521,4 +526,6 @@ void takeShot() {
     }
     mouse_event(MOUSEEVENTF_LEFTUP, cursorX, cursorY, 0, 0);
     SetCursorPos(cursorX, cursorY);
+
+    club_lockstep = return_lockstep;
 }
