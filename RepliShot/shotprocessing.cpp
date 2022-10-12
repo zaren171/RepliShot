@@ -358,7 +358,8 @@ void processShotData(uint8_t* data, int data_size) {
         else { // Driver and Woods
             midswingdelay = 100 + int(525.0 * (swing_speed / current_club.club_speed));
         }
-
+        if (arcade_mode) midswingdelay = int(double(midswingdelay) * arcade_mult);
+        if (midswingdelay > 650) midswingdelay = 650; //650 is a full powered shot, so a longer wait won't help.  Sorry if you can outdrive the game :)
     }
 
     //If the angle of the club head is too great, TGC doesn't take the shot properly and taps the ball instead of the full swing
