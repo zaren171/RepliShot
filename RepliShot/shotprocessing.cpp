@@ -330,8 +330,11 @@ void processShotData(uint8_t* data, int data_size) {
     if (selected_club_value == Putter) {
         backswingstepsize = 7;
         forwardswingstepsize = 25;
-        if (swing_speed > 5.5) midswingdelay = 100 + int(150 * swing_speed);
-        else midswingdelay = 100 + int(100 * swing_speed);
+        double distance = (swing_speed * 6.05) - 15;
+        if (swing_speed < 5.5) distance += (1 / ((swing_speed + 2) * 0.02)) - 6.5;
+        midswingdelay = int(80.0 * tan((distance - 149) / 100) + 700 + (9.0 * distance));
+        //if (swing_speed > 5.5) midswingdelay = 100 + int(150 * swing_speed);
+        //else midswingdelay = 100 + int(100 * swing_speed);
     }
     else
     {
